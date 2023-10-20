@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 var scene, camera, renderer;
 var globe, extraLayer, globeRotationSpeed = 0.005;
-var extraLayerRotationSpeed = 0.001; 
+var extraLayerRotationSpeed = 0.0005; 
 var isDragging = false;
 var previousMousePosition = {
   x: 0,
@@ -51,7 +51,7 @@ function init() {
   document.addEventListener('mouseup', onMouseUp, false);
   document.addEventListener('mousemove', onMouseMove, false);
 
-  window.addEventListener('resize', onWindowResize, false);
+  window.addEventListener('resize', onWindowResize, true);
 }
 
 function onMouseDown(event) {
@@ -75,7 +75,7 @@ function onMouseMove(event) {
   globe.rotation.x += deltaY * 0.005;
   globe.rotation.y += deltaX * 0.005;
 
-  extraLayer.rotation.copy(globe.rotation); // Match the extra layer's rotation to the globe
+  extraLayer.rotation.copy(globe.rotation);
 
   previousMousePosition = {
     x: event.clientX,
