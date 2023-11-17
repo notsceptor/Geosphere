@@ -68,7 +68,6 @@ async def get_weather():
     lat = request.args.get('lat')
     lon = request.args.get('lon')
 
-    print(lat, lon)
     if not lat and lon:
         return jsonify({'error': 'Coordinates not found'}), 400
 
@@ -84,8 +83,6 @@ async def get_weather_details(lat, lon):
     async with httpx.AsyncClient() as client:
         response = await client.get(weather_api_url)
         data = response.json()
-
-        print(data)
         
     return data
 

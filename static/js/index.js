@@ -41,9 +41,9 @@ globe.position.set(0, 0, 0);
 scene.add(globe);
 
 var light = new THREE.DirectionalLight(0xffffff, 5);
-light.position.set(-3, 3, 2);
+light.position.set(-3, 3, 4);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0xd3d3d3, 0.85));
+scene.add(new THREE.AmbientLight(0xd3d3d3, 0.25));
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -131,7 +131,20 @@ function onClick(event) {
 
       getWeatherDetails(latDeg, latLon.lon) 
         .then(data => {
+          const convertedTemp = data.main.temp - 273.15
+          document.getElementById('temperature').innerText = `LOCAL TEMPERATURE: ${convertedTemp.toFixed(2)}C`;
           console.log(data)
+          document.getElementById('weather').innerText = `WEATHER: ${data.weather[0].description}`;
+          document.getElementById('country-name').innerText = `${data.name}`
+
+          const localTime = getLocalTimeFromOffset(data.timezone);
+          document.getElementById('time').innerText = `${localTime.toLocaleTimeString()}`
+          document.getElementById('coord-lon').innerText = `LONGITUDE: ${data.coord.lon}`;
+          document.getElementById('coord-lat').innerText = `LATITUDE: ${data.coord.lat}`;
+          document.getElementById('visibility').innerText = `VISIBILITY: ${data.visibility} meters`;
+          document.getElementById('wind-speed').innerText = `WIND SPEED: ${data.wind.speed} m/s`;
+          document.getElementById('humidity').innerText = `HUMIDITY: ${data.main.humidity}%`;
+          document.getElementById('pressure').innerText = `PRESSURE: ${data.main.pressure} hPa`;
         })
     };
 
@@ -207,8 +220,14 @@ function toggleInfoBox(show) {
   }
 }
 
-function getCountryCode(lat, lon, clickedPosition) {
+function getLocalTimeFromOffset(timezoneOffsetInSeconds) {
+  const utcTime = new Date();
+  const localTime = new Date(utcTime.getTime() + timezoneOffsetInSeconds * 1000);
 
+  return localTime;
+}
+
+function getCountryCode(lat, lon, clickedPosition) {
   const delta = 5; 
   const nearbyCoordinates = [
     { lat: lat - delta, lon: lon },

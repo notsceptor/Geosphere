@@ -127,3 +127,17 @@ h2 {
   opacity: 0;
   pointer-events: none;
 }
+
+.info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; 
+}
+
+.info-item i {
+  width: 20px; 
+}
+
+.info-item h2 {
+  margin-left: 10px;
+}
