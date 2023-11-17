@@ -25,19 +25,22 @@
     <div id="how-to-use-menu" class="how-to-use-menu hidden">
       <h1>How to Use</h1>
       <h2>About Us</h2>
-      <p>Geosphere is an online globe view tool that allows you to click anywhere on the globe and stream the relevant countries name, temperature, carbon and weather data through API calls.</p>
+      <p>Geosphere is an online globe view tool that allows you to click anywhere on the globe and stream the relevant countries name, temperature, location and weather data through API calls utilising longitude and latitude characteristics. Geosphere is accurate to within roughly 30km</p>
       <h2>Instructions</h2>
-      <p>To begin, use the <b>[ALT]</b> key along with <b>[MOUSE DOWN]</b> to drag around the globe to a desirable view. Then click with <b>[MOUSE DOWN]</b> to zoom in on the location of choice, and stream the data. Once your done, <b>MOUSE DOWN</b> on the globe again to be pulled back out of the view.</p>
-      <p>For the best experience please utilise <b>FULLSCREEN</b> or <b>WINDOWED MODE</b> for all features of the application to work optimisably</p>
+      <p>To begin, use the <b>[ALT]</b> key along with <b>[MOUSE DOWN]</b> to drag around the globe to a desirable view. Then click with <b>[MOUSE DOWN]</b> to zoom in on the location of choice, and stream the data. Once your done, <b>[MOUSE DOWN]</b> on the globe again to be pulled back out of the view.</p>
+      <p>For the best experience please utilise <b>FULLSCREEN</b> for all features of the application to work optimisably</p>
     </div>
     <div class="parallax"></div>
     <div class="stars"></div>
         <script type="module" src="{{ url_for('static', filename='js/index.js') }}"></script>
     <div id="globe-container"></div>
     <div id="info-box">
-      <h1 id="country-name">France</h1>
+      <img id="flag" src="">
+      <div id="title-bar">
+        <h1 id="country-name">France</h1>
+      </div>
+      <p id="text-display">You are currently viewing data with regards to UNKNOWN</p>
       <div id="details">
-        <p id="text-display">You are currently viewing data with regards to France</p>
         
         <section class="data-section">
           <h2>Data</h2>
@@ -48,18 +51,8 @@
           </div>
           
           <div class="info-item">
-            <i class="fas fa-thermometer-half"></i>
-            <h2 id="temperature"></h2>
-          </div>
-          
-          <div class="info-item">
             <i class="fas fa-cloud-showers-heavy"></i>
             <h2 id="weather"></h2>
-          </div>
-          
-          <div class="info-item">
-            <i class="fas fa-users"></i>
-            <h2 id="population"></h2>
           </div>
         </section>
       
@@ -79,6 +72,10 @@
       
         <section class="weather-details-section">
           <h2>Weather Details</h2>
+          <div class="info-item">
+            <i class="fas fa-thermometer-half"></i>
+            <h2 id="temperature"></h2>
+          </div>
           
           <div class="info-item">
             <i class="fas fa-eye"></i>
@@ -102,7 +99,7 @@
         </section>
       </div>
     
-      <p>To escape the panel <b>[MOUSE DOWN]</b> on the globe</p>
+      <p id="escape">To escape the panel <b>[MOUSE LMB]</b> on the globe</p>
     </div>
     
     
