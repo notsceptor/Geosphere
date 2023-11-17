@@ -12,7 +12,7 @@ DATABASE_CONFIG = {
     'port': 5432,
     'database': "postgres",
     'user': "postgres",
-    'password': "uGe0g7TX55W14zXb"
+    'password': ""
 }
 
 async def create_pool():
@@ -78,7 +78,7 @@ async def get_weather():
         return jsonify({'error': str(e)}), 500
 
 async def get_weather_details(lat, lon):
-    weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=bef596d12f785aff7d562a0506c5b998'
+    weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid='
     
     async with httpx.AsyncClient() as client:
         response = await client.get(weather_api_url)
