@@ -8,13 +8,6 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById('globe-container').appendChild(renderer.domElement);
 
-const createSphere = (radius, segments, texturePath, materialOptions = {}) => {
-  const geometry = new THREE.SphereGeometry(radius, segments, segments);
-  const texture = new THREE.TextureLoader().load(texturePath);
-  const material = new THREE.MeshPhongMaterial({ map: texture, ...materialOptions });
-  return new THREE.Mesh(geometry, material);
-};
-
 const starGeometry = new THREE.BufferGeometry()
 const starMaterial = new THREE.PointsMaterial({ color: 0xffffff })
 
@@ -34,7 +27,7 @@ scene.add(stars)
 const earthTexture = new THREE.TextureLoader().load('/static/images/earth.jpg');
 earthTexture.wrapS = THREE.RepeatWrapping;
 earthTexture.offset.x = -1475 / ( 2 * Math.PI );
-const earthMaterial = new THREE.MeshPhongMaterial({ map: earthTexture, color: 0xffffff });
+const earthMaterial = new THREE.MeshPhongMaterial({ map: earthTexture, color: 0xffffff,shininess:50 });
 
 const globe = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 64), earthMaterial);
 globe.position.set(0, 0, 0);
@@ -95,19 +88,7 @@ function onClick(event) {
     const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
     const angleOffsetVertical = Math.asin(direction.y);
 
-    const ray = new THREE.Raycaster(camera.position, clickedPosition.clone().sub(camera.position).normalize());
-    const globeIntersects = ray.intersectObject(globe);
-
-    var latDeg;
-
-    if (globeIntersects.length > 0) {
-      const localIntersection = globe.worldToLocal(globeIntersects[0].point);
-      const latitude = Math.asin(localIntersection.y / globe.geometry.parameters.radius);
-
-      latDeg = THREE.MathUtils.radToDeg(latitude);
-
-      console.log('Latitude:', latDeg, 'Longitude:', latLon.lon);
-    }
+    console.log('Latitude:', latLon.lat, 'Longitude:', latLon.lon);
 
     if (!event.altKey) {
       gsap.to(globe.rotation, 1, { y: -angleOffsetHorizontal, x: angleOffsetVertical });
@@ -118,34 +99,33 @@ function onClick(event) {
         removeMarkers();
       }
 
-      addMarker(clickedPosition);
+    addMarker(clickedPosition);
 
-      getCountryCode(latDeg, latLon.lon, clickedPosition)
-        .then(countryCode => {
-          if (countryCode) {
-            console.log('Country Code:', countryCode);
-          } else {
-            console.log('Unable to fetch country code.');
-          }
-        });
-
-      getWeatherDetails(latDeg, latLon.lon) 
+    if (!event.altKey && !isEnlarged) {
+      getWeatherDetails(latLon.lat, latLon.lon)
         .then(data => {
           const convertedTemp = data.main.temp - 273.15
-          document.getElementById('temperature').innerText = `LOCAL TEMPERATURE: ${convertedTemp.toFixed(2)}C`;
-          console.log(data)
-          document.getElementById('weather').innerText = `WEATHER: ${data.weather[0].description}`;
-          document.getElementById('country-name').innerText = `${data.name}`
+          document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`
+          if (data.countryName) {
+            document.getElementById('details').style.display = 'block';
+            document.getElementById('text-display').innerText = `You are currently viewing details with regards to ${data.name}`
+            document.getElementById('temperature').innerText = `LOCAL TEMPERATURE: ${convertedTemp.toFixed(2)}C`;
+            console.log(data)
+            document.getElementById('weather').innerText = `WEATHER: ${data.weather[0].description}`;
 
-          const localTime = getLocalTimeFromOffset(data.timezone);
-          document.getElementById('time').innerText = `${localTime.toLocaleTimeString()}`
-          document.getElementById('coord-lon').innerText = `LONGITUDE: ${data.coord.lon}`;
-          document.getElementById('coord-lat').innerText = `LATITUDE: ${data.coord.lat}`;
-          document.getElementById('visibility').innerText = `VISIBILITY: ${data.visibility} meters`;
-          document.getElementById('wind-speed').innerText = `WIND SPEED: ${data.wind.speed} m/s`;
-          document.getElementById('humidity').innerText = `HUMIDITY: ${data.main.humidity}%`;
-          document.getElementById('pressure').innerText = `PRESSURE: ${data.main.pressure} hPa`;
+            const localTime = getLocalTimeFromOffset(data.timezone);
+            document.getElementById('time').innerText = `LOCAL TIME: ${localTime.toLocaleTimeString()}`
+            document.getElementById('coord-lon').innerText = `LONGITUDE: ${data.coord.lon}`;
+            document.getElementById('coord-lat').innerText = `LATITUDE: ${data.coord.lat}`;
+            document.getElementById('visibility').innerText = `VISIBILITY: ${data.visibility} meters`;
+            document.getElementById('wind-speed').innerText = `WIND SPEED: ${data.wind.speed} m/s`;
+            document.getElementById('humidity').innerText = `HUMIDITY: ${data.main.humidity}%`;
+            document.getElementById('pressure').innerText = `PRESSURE: ${data.main.pressure} hPa`;
+          } else {
+            document.getElementById('details').style.display = 'none';
+          }
         })
+      }
     };
 
     const cameraPositionZ = isEnlarged && !event.altKey ? 5 : 3.5;
@@ -227,38 +207,6 @@ function getLocalTimeFromOffset(timezoneOffsetInSeconds) {
   return localTime;
 }
 
-function getCountryCode(lat, lon, clickedPosition) {
-  const delta = 5; 
-  const nearbyCoordinates = [
-    { lat: lat - delta, lon: lon },
-    { lat: lat + delta, lon: lon },
-    { lat: lat, lon: lon - delta },
-    { lat: lat, lon: lon + delta },
-  ];
-
-  const apiRequests = nearbyCoordinates.map(coord => {
-    const apiUrl = `http://api.geonames.org/countryCodeJSON?lat=${coord.lat}&lng=${coord.lon}&radius=100&username=sceptor`;
-    return fetch(apiUrl)
-      .then(response => response.json())
-      .then(data => data.countryCode)
-      .catch(error => {
-        console.error('Error fetching country code:', error);
-        return null;
-      });
-  });
-
-  return Promise.all(apiRequests)
-    .then(countryCodes => {
-      console.log(countryCodes)
-      const validCountryCode = countryCodes.find(code => code !== undefined);
-      return validCountryCode || null; 
-    })
-    .catch(error => {
-      console.error('Error fetching country code:', error);
-      return null;
-    });
-}
-
 function getWeatherDetails(lat, lon) {
   const url = `/get_weather?lat=${lat}&lon=${lon}`;
   return fetch(url)
@@ -271,21 +219,23 @@ function getWeatherDetails(lat, lon) {
 }
 
 function convertWorldToLatLon(worldPosition) {
-  const phi = Math.acos(worldPosition.y / 0.5);
-  const theta = Math.atan2(worldPosition.x, worldPosition.z);
+  const radius = 0.5; 
+  const latCorrectionFactor = 3; 
+  const lonCorrectionFactor = -1.5; 
 
-  let lat = (Math.PI / 2 - phi) * (180 / Math.PI);
-  let lon = (theta) * (180 / Math.PI);
+  const x = worldPosition.x;
+  const y = worldPosition.y;
+  const z = worldPosition.z;
 
-  const correctionFactor = Math.cos(phi);
-  lat *= correctionFactor;
+  const lon = Math.atan2(x, z);
+  const hyp = Math.sqrt(x * x + z * z);
+  const lat = Math.atan2(y, hyp);
 
-  if (lon < -180) lon += 360;
-  if (lon > 180) lon -= 360;
+  const latDeg = (lat * 180) / Math.PI + latCorrectionFactor;
+  let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor;
 
-  return { lat, lon };
+  return { lat: latDeg, lon: lonDeg };
 }
-
 
 function updateAspect() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -302,55 +252,38 @@ function fadeHowToUseMenu(isEnlarged) {
   } if (isEnlarged){
     howToUseMenu.classList.remove('hidden');
     gsap.to(howToUseMenu, { opacity: 1, duration: 0.5 });
-  }
+  } 
 }
-
-
 
 
 const markers = [];
 
-// Function to add a marker at a specific position with a pop-up animation
 function addMarker(position) {
-  const markerGeometry = new THREE.RingGeometry(0.03, 0.04, 32); // Create a ring geometry
-  const markerMaterial = new THREE.MeshBasicMaterial({ color: 0x0377fc, side: THREE.DoubleSide, transparent: true }); // Bright blue color
+  const markerGeometry = new THREE.RingGeometry(0.03, 0.04, 32);
+  const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true });
 
-  const marker = new THREE.Mesh(markerGeometry, markerMaterial); // Create the marker
-  marker.position.copy(position); // Position the marker at the clicked position
-  marker.lookAt(globe.position); // Make the marker face the globe's center
+  const marker = new THREE.Mesh(markerGeometry, markerMaterial); 
+  marker.position.copy(position);
+  marker.lookAt(globe.position);
 
-  // Rotate the marker to align with the globe's surface UV
   const normal = marker.position.clone().normalize();
   marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
 
-  marker.scale.set(0.01, 0.01, 0.01); // Set initial scale to zero
+  marker.scale.set(0.01, 0.01, 0.01);
 
-  globe.add(marker); // Add the marker to the globe
-  markers.push(marker); // Store the marker
+  globe.add(marker);
+  markers.push(marker);
 
-  // Pop-up animation for the marker
   gsap.to(marker.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: 'back.out(1.7)' });
 }
 
-// Function to remove all markers from the globe with a pop-out animation
 function removeMarkers() {
   markers.forEach(marker => {
-    // Pop-out animation for the marker before removing it
     gsap.to(marker.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 0.5, ease: 'back.in(1.7)', onComplete: () => {
-      globe.remove(marker); // Remove marker from the globe after animation
+      globe.remove(marker);
     } });
   });
-  markers.length = 0; // Clear markers array
-}
-
-function recalculateCoordinates() {
-  const direction = new THREE.Vector3();
-  const latLon = {};
-
-  globe.localToWorld(direction.set(0, 0, -1));
-  latLon = convertWorldToLatLon(direction);
-
-  return latLon;
+  markers.length = 0;
 }
 
 animate();

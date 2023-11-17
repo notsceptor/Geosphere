@@ -73,6 +73,10 @@ async def get_weather():
 
     try:
         weather_details = await get_weather_details(lat, lon)
+        country_code = await get_country_code(lat, lon)
+
+        weather_details.update(country_code)
+
         return jsonify(weather_details)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -83,7 +87,17 @@ async def get_weather_details(lat, lon):
     async with httpx.AsyncClient() as client:
         response = await client.get(weather_api_url)
         data = response.json()
-        
+
+    return data
+
+async def get_country_code(lat, lon):
+    country_api_url = f'http://api.geonames.org/countryCodeJSON?lat={lat}&lng={lon}&radius=100&username=sceptor'
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(country_api_url)
+        data = response.json()
+
+    print(data)
     return data
 
 if __name__ == '__main__':
