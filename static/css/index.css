@@ -95,6 +95,16 @@ h2 {
   }
 }
 
+h3{
+  padding-top: 15px;
+  color: #ffffff;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 25px;
+  margin-top: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 .info-item {
   display: flex;
   align-items: center;
@@ -131,7 +141,7 @@ h2 {
   text-align: center;
   padding: 20px;
   width: 200px;
-  top: 13%;
+  top: 6%;
   right: 0px;
   height: 100vh;
   background-color: transparent;
@@ -184,8 +194,102 @@ h2 {
   width: 100%;
   text-align: center;
   padding: 10px; 
-  background-color: transparent;
-  transition: opacity 0.25s ease-in-out; 
+  background-color: transparent; 
   color: #fff; 
   display: none;
+}
+
+#search-container {
+  position: absolute;
+  display: block;
+  z-index: 99;
+}
+
+#search-container {
+  position: absolute;
+  top: 20px;
+  width: 300px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-family: 'Exo 2', sans-serif;
+}
+
+#search-container input[type="text"],
+#search-container button {
+  padding: 10px;
+  font-family: 'Exo 2', sans-serif;
+  vertical-align: middle; /* Align elements vertically */
+}
+
+#search-container input[type="text"] {
+  border: 2px solid white;
+  background-color: black;
+  color: white;
+  outline: none;
+  border-radius: 20px; /* Rounded corners */
+  width: 70%; /* Adjust width */
+}
+
+#search-container button {
+  border: 2px solid white;
+  background-color: black;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+  border-radius: 20px; /* Rounded corners for button */
+  width: 25%; /* Adjust width */
+}
+
+/* Center align button and input */
+#search-container input[type="text"],
+#search-container button {
+  display: inline-block;
+  margin-right: 5px; /* Add some spacing between elements */
+  margin-bottom: 10px; /* Adjust vertical spacing */
+  box-sizing: border-box; /* Ensure padding and border included in width */
+  vertical-align: middle;
+}
+
+.hidden {
+  display: none;
+}
+
+/* CSS for the bottom panel and buttons */
+#bottom-panel {
+  position: fixed;
+  bottom: 20px; /* Adjust the distance from the bottom */
+  left: 10%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  z-index: 999; /* Set a higher z-index value */
+}
+
+#bottom-panel button {
+  margin: 0 10px;
+  padding: 8px 16px;
+  border: 2px solid white;
+  border-radius: 5px;
+  background-color: transparent;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  outline: none;
+}
+
+#bottom-panel button:hover {
+  background-color: white;
+  color: black;
+}
+
+#earth-theme-btn.active,
+#bathymetry-theme-btn.active,
+#topography-theme-btn.active {
+  background-color: white;
+  color: black;
+  /* Add any other active button styles */
 }

@@ -12,7 +12,7 @@ DATABASE_CONFIG = {
     'port': 5432,
     'database': "postgres",
     'user': "postgres",
-    'password': ""
+    'password': "uGe0g7TX55W14zXb"
 }
 
 async def create_pool():
@@ -80,9 +80,31 @@ async def get_weather():
         return jsonify(weather_details)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/search_city', methods=['GET'])
+async def search_city():
+    if not session.get('logged_in'):
+        flash('Please log in first.', 'danger')
+        return redirect(url_for('login'))
+    
+    city = request.args.get('city_name')
+
+    if not city:
+        return jsonify({'error': 'City name not provided'}), 400
+    
+    try:
+        city_data = await perform_city_search(city)
+
+        if city_data:
+            city_coords = {'latitude': city_data[0]['lat'], 'longitude': city_data[0]['lon']}
+            return jsonify(city_coords)
+        else:
+            return jsonify({'error': 'City not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 async def get_weather_details(lat, lon):
-    weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid='
+    weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=bef596d12f785aff7d562a0506c5b998'
     
     async with httpx.AsyncClient() as client:
         response = await client.get(weather_api_url)
@@ -97,7 +119,15 @@ async def get_country_code(lat, lon):
         response = await client.get(country_api_url)
         data = response.json()
 
-    print(data)
+    return data
+
+async def perform_city_search(city):
+    geocode_api = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid=bef596d12f785aff7d562a0506c5b998'
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(geocode_api)
+        data = response.json()
+
     return data
 
 if __name__ == '__main__':

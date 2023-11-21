@@ -55,7 +55,7 @@ const animate = () => {
     renderer.render(scene, camera);
 
     if (!isEnlarged) {
-        //globe.rotation.y += 0.001;
+        //globe.rotation.y += 0.0001;
     }
 };
 
@@ -78,6 +78,7 @@ const previousMousePosition = {
 
 window.addEventListener('click', onClick);
 
+
 function onClick(event) {
     event.preventDefault();
 
@@ -92,24 +93,15 @@ function onClick(event) {
         const clickedPosition = intersects[0].point.clone();
         globe.worldToLocal(clickedPosition);
 
-        const latLon = convertWorldToLatLon(clickedPosition);
-
         console.log(clickedPosition)
 
-        const direction = clickedPosition.clone().sub(globe.position).normalize();
-        const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
-        const angleOffsetVertical = Math.asin(direction.y);
+        const latLon = convertWorldToLatLon(clickedPosition);
 
-        console.log('Latitude:', latLon.lat, 'Longitude:', latLon.lon);
+        console.log(isEnlarged)
 
-        if (!event.altKey) {
-            gsap.to(globe.rotation, 1, {
-                y: -angleOffsetHorizontal,
-                x: angleOffsetVertical
-            });
-        }
-
-        if (!isEnlarged && !event.altKey) {
+        if (!event.altKey && !isEnlarged) {
+            toggleEscapePanel(isEnlarged);
+            setupLoading();
             if (isEnlarged) {
                 removeMarkers();
             }
@@ -119,21 +111,21 @@ function onClick(event) {
             if (!event.altKey && !isEnlarged) {
                 getWeatherDetails(latLon.lat, latLon.lon)
                     .then(data => {
-                        const convertedTemp = data.main.temp - 273.15
-                        document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`
+                        const convertedTemp = data.main.temp - 273.15;
+
+                        document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
                         if (data.countryName) {
-                            const flag = document.getElementById('flag')
-                            flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`
+                            const flag = document.getElementById('flag');
+                            flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
                             flag.style.display = 'block';
 
                             document.getElementById('details').style.display = 'block';
                             document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
-                            document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`
-                            console.log(data);
+                            document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
+
                             document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
 
                             const localTime = getLocalTimeFromOffset(data.timezone);
-                            document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span class="value">${convertedTemp.toFixed(2)}</span>C`;
                             document.getElementById('time').innerHTML = `<span class="label">LOCAL TIME:</span>&nbsp;<span class="value">${localTime.toLocaleTimeString()}</span>`;
                             document.getElementById('coord-lon').innerHTML = `<span class="label">LONGITUDE:</span>&nbsp;<span class="value">${data.coord.lon}</span>`;
                             document.getElementById('coord-lat').innerHTML = `<span class="label">LATITUDE:</span>&nbsp;<span class="value">${data.coord.lat}</span>`;
@@ -147,11 +139,20 @@ function onClick(event) {
                             document.getElementById('details').style.display = 'none';
                             document.getElementById('flag').style.display = 'none';
                         }
-                    })
+                    });
             }
-        };
+        }
 
-        document.getElementById('escape').style.display = 'none';
+        const direction = clickedPosition.clone().sub(globe.position).normalize();
+        const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
+        const angleOffsetVertical = Math.asin(direction.y);
+
+        if (!event.altKey) {
+            gsap.to(globe.rotation, 1, {
+                y: -angleOffsetHorizontal,
+                x: angleOffsetVertical
+            });
+        }
 
         const cameraPositionZ = isEnlarged && !event.altKey ? 5 : 3.5;
         const globePositionX = isEnlarged && !event.altKey ? 0 : 0.5;
@@ -167,10 +168,38 @@ function onClick(event) {
 
             toggleInfoBox(!isEnlarged);
             fadeHowToUseMenu(isEnlarged);
+            toggleEscapePanel(false);
             isEnlarged = !isEnlarged;
         }
     }
 }
+
+function toggleEscapePanel(show) {
+    const escapePanel = document.getElementById('escape');
+    escapePanel.style.display = show ? 'block' : 'none';
+}
+
+
+let zoomLevel = 5; // Initial zoom level
+let zoomSpeed = 0.1; // Adjust the zoom speed as needed
+let dragSpeed = 0.003;
+let baseDragSpeed = 0.0025;
+
+window.addEventListener('wheel', event => {
+    event.preventDefault();
+    const delta = Math.sign(event.deltaY); // Check scroll direction
+
+    // Zoom in or out based on scroll direction
+    zoomLevel += delta * zoomSpeed;
+    zoomLevel = Math.min(Math.max(zoomLevel, 0.75), 10); // Adjust min and max zoom levels
+
+    // Update camera position based on zoom level
+    const newCameraPositionZ = isEnlarged ? 5 : zoomLevel;
+    gsap.to(camera.position, 0.5, { z: newCameraPositionZ, onUpdate: updateAspect });
+
+    dragSpeed = (baseDragSpeed * zoomLevel) * 0.25;
+});
+
 
 function dragGlobe(event) {
     if (!isEnlarged) {
@@ -184,8 +213,11 @@ function dragGlobe(event) {
                 y: event.clientY - previousMousePosition.y
             };
 
-            globe.rotation.y += deltaMove.x * 0.0025;
-            globe.rotation.x += deltaMove.y * 0.0025;
+            console.log(zoomLevel)
+            console.log(dragSpeed)
+
+            globe.rotation.y += deltaMove.x * dragSpeed;
+            globe.rotation.x += deltaMove.y * dragSpeed;
 
             previousMousePosition.x = event.clientX;
             previousMousePosition.y = event.clientY;
@@ -207,6 +239,19 @@ window.addEventListener('mousemove', event => {
 
 window.addEventListener('mouseup', () => {
     isDragging = false;
+});
+
+const searchButton = document.getElementById('search-button');
+const citySearchInput = document.getElementById('city-search');
+
+searchButton.addEventListener('click', () => {
+    const cityName = citySearchInput.value;
+    if (cityName.trim() !== '') {
+        performCitySearch(cityName)
+                    .then(data => {
+                        onCitySearch(data.latitude, data.longitude)
+                    })
+    }
 });
 
 function popupPageLoad() {
@@ -235,8 +280,54 @@ function popupPageLoad() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', popupPageLoad);
-document.addEventListener('DOMContentLoaded', fadeHowToUseMenu(!isEnlarged));
+document.addEventListener('DOMContentLoaded', () => {
+    popupPageLoad()
+    fadeHowToUseMenu(!isEnlarged)
+
+    /*const bathymetryTexture = new THREE.TextureLoader().load('static/images/Topography_Earth.png');
+    bathymetryTexture.wrapS = THREE.RepeatWrapping;
+    bathymetryTexture.offset.x = -1475 / (2 * Math.PI);
+    const bathymetryMaterial = new THREE.MeshPhongMaterial({ map: bathymetryTexture });
+
+    const topographyTexture = new THREE.TextureLoader().load('static/images/Bathymetry_Earth.png');
+    topographyTexture.wrapS = THREE.RepeatWrapping;
+    topographyTexture.offset.x = -1475 / (2 * Math.PI);
+    const topographyMaterial = new THREE.MeshPhongMaterial({ map: topographyTexture });
+
+    const bathymetryThemeBtn = document.getElementById('bathymetry-theme-btn');
+    const earthThemeBtn = document.getElementById('earth-theme-btn');
+    const topographyThemeBtn = document.getElementById('topography-theme-btn');
+    
+    globe.material = bathymetryMaterial;
+    globe.material = topographyMaterial;
+    globe.material = earthMaterial;
+
+    const themeButtons = [bathymetryThemeBtn, earthThemeBtn, topographyThemeBtn];
+
+    earthThemeBtn.classList.add('active');
+
+    function setActiveButton(button) {
+        themeButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        button.classList.add('active');
+    }
+
+    bathymetryThemeBtn.addEventListener('click', () => {
+        globe.material = bathymetryMaterial;
+        setActiveButton(bathymetryThemeBtn);
+    });
+
+    earthThemeBtn.addEventListener('click', () => {
+        globe.material = earthMaterial;
+        setActiveButton(earthThemeBtn);
+    });
+
+    topographyThemeBtn.addEventListener('click', () => {
+        globe.material = topographyMaterial;
+        setActiveButton(topographyThemeBtn);
+    });*/
+})
 
 function toggleInfoBox(show) {
     const leftValue = show ? '0' : '-100%';
@@ -269,10 +360,21 @@ function getWeatherDetails(lat, lon) {
         });
 }
 
+function performCitySearch(cityName) {
+    const url = `/search_city?city_name=${cityName}`;
+    return fetch(url)
+        .then(response => response.json())
+        .then(data => data)
+        .catch(error => {
+            console.error('Error fetching city detials:', error);
+            return null;
+        });
+}
+
 function convertWorldToLatLon(worldPosition) {
-    const radius = 0.5;
-    const latCorrectionFactor = 1; // 3
-    const lonCorrectionFactor = -1.5; // -1.5
+    const radius = 0.5; // stored here for reminder purposes
+    const latCorrectionFactor = 1; // 3 (original value)
+    const lonCorrectionFactor = -1; // -1.5 (original value)
 
     const x = worldPosition.x;
     const y = worldPosition.y;
@@ -291,6 +393,14 @@ function convertWorldToLatLon(worldPosition) {
     };
 }
 
+function convertLatLonToWorld(lat, lon, radius) {
+    const x = 0.5 * Math.cos(lat) * Math.cos(lon);
+    const y = 0.5 * Math.cos(lat) * Math.sin(lon);
+    const z = 0.5 * Math.sin(lat);
+
+    return new THREE.Vector3(x, y, z);
+}
+
 function updateAspect() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -303,10 +413,8 @@ function fadeHowToUseMenu(isEnlarged) {
         gsap.to(howToUseMenu, {
             opacity: 0,
             duration: 0.5,
-            onComplete: () => {
-                howToUseMenu.classList.add('hidden');
-            }
         });
+        howToUseMenu.classList.add('hidden');
     }
     if (isEnlarged) {
         howToUseMenu.classList.remove('hidden');
@@ -321,33 +429,86 @@ function fadeHowToUseMenu(isEnlarged) {
 const markers = [];
 
 function addMarker(position) {
-    const markerGeometry = new THREE.RingGeometry(0.03, 0.04, 32);
-    const markerMaterial = new THREE.MeshBasicMaterial({
-        color: 0xcff0ff,
-        side: THREE.DoubleSide,
-        transparent: true
-    });
 
-    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-    marker.position.copy(position);
-    marker.lookAt(globe.position);
+{        // Create marker geometry and material
+        const markerGeometry = new THREE.RingGeometry(0.015, 0.02, 32); // Adjust initial size here
+        const markerMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            side: THREE.DoubleSide,
+            transparent: true
+        });
 
-    const normal = marker.position.clone().normalize();
-    marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+        // Create a mesh using geometry and material for the main marker
+        const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+        marker.position.copy(position);
 
-    marker.scale.set(0.01, 0.01, 0.01);
+        // Calculate the normal vector at the marker's position on the globe
+        const normal = marker.position.clone().normalize();
 
-    globe.add(marker);
-    markers.push(marker);
+        // Set the marker's position slightly above the surface based on the normal vector
+        const offset = 0.001; // Set the offset value to position the marker above the surface
+        marker.position.addScaledVector(normal, offset);
 
-    gsap.to(marker.scale, {
-        x: 1,
-        y: 1,
-        z: 1,
-        duration: 0.5,
-        ease: 'back.out(1.7)'
-    });
-}
+        // Look at the globe's position to orient the marker
+        marker.lookAt(globe.position);
+
+        // Orient the marker based on the globe's position
+        const markerNormal = marker.position.clone().normalize();
+        marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), markerNormal);
+
+        // Set initial scale of the marker
+        marker.scale.set(0.01, 0.01, 0.01);
+
+        // Add a white dot to the center of the marker
+        const dotGeometry = new THREE.CircleGeometry(0.005, 32);
+        const dotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+        marker.add(dot); // Add the dot as a child of the marker
+        dot.position.set(0, 0, 0.001); // Position the dot slightly above the marker's surface
+
+        // Add the marker to the globe and store in markers array
+        globe.add(marker);
+        markers.push(marker);
+
+        // Function to perform the streaming animation
+        function animateStream() {
+            gsap.to(marker.scale, {
+                x: 1, // Scale up the marker (can adjust the value for desired effect)
+                y: 1,
+                z: 1,
+                duration: 1, // Set the duration for scaling up
+                ease: 'power2.out',
+                onComplete: () => {
+                    gsap.to(marker.material, {
+                        opacity: 0, // Fade out the opacity
+                        duration: 0.5, // Set the duration for opacity fade
+                        onComplete: () => {
+                            resetAnimation(); // Reset animation for the marker
+                        }
+                    });
+                }
+            });
+        }
+
+         // Function to reset the animation for the marker
+        function resetAnimation() {
+            gsap.to(marker.scale, {
+                x: 0.01, // Scale down the marker back to the original smaller size
+                y: 0.01,
+                z: 0.01,
+                duration: 0, // Instant scale change
+                onComplete: () => {
+                    marker.material.opacity = 1; // Reset opacity
+                    animateStream(); // Restart the animation recursively
+                }
+            });
+        }
+
+        // Start the streaming animation
+        animateStream();
+
+    }}
+
 
 function removeMarkers() {
     markers.forEach(marker => {
@@ -363,6 +524,95 @@ function removeMarkers() {
         });
     });
     markers.length = 0;
+}
+
+
+function setupLoading(){
+    document.getElementById('country-name').innerHTML = "Loading Data..."
+    document.getElementById('text-display').innerHTML = 'Hang tight while we work on fetching your data';
+    document.getElementById('details').style.display = 'none';
+    document.getElementById('flag').style.display = 'none';
+}
+
+async function onCitySearch(lat, lon) {
+    if (isEnlarged) {
+        isEnlarged = !isEnlarged;
+    }
+
+    const worldCoordinates = convertLatLonToWorld(lat, lon, 0.5);
+    //globe.worldToLocal(worldCoordinates);
+
+    const direction = worldCoordinates.clone().sub(globe.position).normalize();
+    const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
+    const angleOffsetVertical = Math.asin(direction.y);
+
+    console.log(worldCoordinates)
+
+    gsap.to(globe.rotation, 1, {
+        x: worldCoordinates.x,
+        y: worldCoordinates.y,
+        z: worldCoordinates.z
+    });
+
+    if (!isEnlarged) {
+        setupLoading();
+        if (isEnlarged) {
+            removeMarkers();
+        }
+
+        addMarker(worldCoordinates);
+
+        if (!isEnlarged) {
+            getWeatherDetails(lat, lon)
+                .then(data => {
+                    const convertedTemp = data.main.temp - 273.15;
+                    document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
+                    if (data.countryName) {
+                        const flag = document.getElementById('flag');
+                        flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
+                        flag.style.display = 'block';
+
+                        document.getElementById('details').style.display = 'block';
+                        document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
+                        document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
+                        console.log(data);
+                        document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
+
+                        const localTime = getLocalTimeFromOffset(data.timezone);
+                        document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span class="value">${convertedTemp.toFixed(2)}</span>C`;
+                        document.getElementById('time').innerHTML = `<span class="label">LOCAL TIME:</span>&nbsp;<span class="value">${localTime.toLocaleTimeString()}</span>`;
+                        document.getElementById('coord-lon').innerHTML = `<span class="label">LONGITUDE:</span>&nbsp;<span class="value">${data.coord.lon}</span>`;
+                        document.getElementById('coord-lat').innerHTML = `<span class="label">LATITUDE:</span>&nbsp;<span class="value">${data.coord.lat}</span>`;
+                        document.getElementById('visibility').innerHTML = `<span class="label">VISIBILITY:</span>&nbsp;<span class="value">${data.visibility}</span> meters`;
+                        document.getElementById('wind-speed').innerHTML = `<span class="label">WIND SPEED:</span>&nbsp;<span class="value">${data.wind.speed}</span> m/s`;
+                        document.getElementById('humidity').innerHTML = `<span class="label">HUMIDITY:</span>&nbsp;<span class="value">${data.main.humidity}</span>%`;
+                        document.getElementById('pressure').innerHTML = `<span class="label">PRESSURE:</span>&nbsp;<span class="value">${data.main.pressure}</span> hPa`;
+                        document.getElementById('escape').style.display = 'block';
+                    } else {
+                        document.getElementById('text-display').innerHTML = 'The location you clicked is not a valid country, or close enough to a nearby country. Try clicking elsewhere to locate country data.';
+                        document.getElementById('details').style.display = 'none';
+                        document.getElementById('flag').style.display = 'none';
+                    }
+                });
+        }
+
+        document.getElementById('escape').style.display = 'none';
+
+        const cameraPositionZ = isEnlarged ? 5 : 3.5;
+        const globePositionX = isEnlarged ? 0 : 0.5;
+
+        gsap.to(camera.position, 0.75, {
+            z: cameraPositionZ,
+            onUpdate: updateAspect
+        });
+        gsap.to(globe.position, 0.75, {
+            x: globePositionX
+        });
+
+        toggleInfoBox(!isEnlarged);
+        fadeHowToUseMenu(isEnlarged);
+        isEnlarged = !isEnlarged;
+    }
 }
 
 animate();
