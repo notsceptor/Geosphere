@@ -183,6 +183,7 @@ h3{
   z-index: 1000;
 }
 #search-container {
+  transition: opacity 0.25s ease-in-out;
   position: absolute;
   display: block;
   z-index: 99;
@@ -214,7 +215,6 @@ h3{
   background-color: black;
   color: white;
   cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
   border-radius: 20px;
   width: 25%;
 }
@@ -459,10 +459,12 @@ h3{
 }
 
 #favourites-button i {
+  color: white;
   margin-right: 5px;
 }
 
 .favourites-tab {
+  color: white;
   display: none;
   position: absolute;
 }
@@ -479,7 +481,8 @@ h3{
   border: 1px solid #fff;
   border-radius: 5px;
   padding: 20px;
-  transition: left
+  transition: left;
+  z-index: 1050;
 }
 
 #favourites-title {
@@ -487,17 +490,47 @@ h3{
 }
 
 #favourite-cities-list {
+  color: white;
   list-style-type: none;
+  padding: 0;
+  margin: 0;
 }
 
 .favBtn {
+  position: absolute;
   display: inline;
   background-color: black;
   padding: 10px;
-  border-radius: 20px;
-  width: 50px;
+  border-radius: 10px;
+  width: 25%;
   border: 2px solid white;
   font-family: 'Exo 2', sans-serif;
+  font-weight: bold;
+  color: white;
+  z-index: 1050;
+}
+
+#favourite-cities-list .favBtn:hover {
+  background-color: white;
+  color: black;
+}
+
+#favourite-cities-list div {
+  margin-bottom: 20px; 
+}
+
+.favBtn.remove {
+  border-color: red;
+  left:70%;
+}
+
+#favourite-cities-list .favBtn.remove:hover {
+  background-color: red;
+  color: white;
+}
+
+.favBtn.search {
+  left: 42.5%;
 }
 
 #favList {
@@ -505,4 +538,5 @@ h3{
   padding: 10px;
   vertical-align: middle;
   align-items: center;
+  font-size: 20px;
 }

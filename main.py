@@ -126,6 +126,16 @@ async def get_user_favourites_route():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/remove_favourites', methods=['GET', 'POST'])
+async def remove_favourites_route():
+    username = request.args.get('username')
+    city_name = request.args.get('city_name')
+    try:
+        result = await remove_favourites(username, city_name)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 async def get_user_favourites(username):
     try:
@@ -134,6 +144,39 @@ async def get_user_favourites(username):
 
         result = await db.fetch("SELECT city_name FROM favourites WHERE username = $1", username)
         return [row['city_name'] for row in result]
+    except Exception as e:
+        print(str(e))
+    finally:
+        await pool.release(db)
+        await close_pool(pool)
+
+async def remove_favourites(username, city_name):
+    try:
+        pool = await create_pool()
+        db = await pool.acquire()
+
+        city_name = city_name.strip()
+
+        existing_favourites = await db.fetchval(
+            "SELECT city_name FROM favourites WHERE username = $1",
+            username,
+        )
+
+        if not existing_favourites:
+            raise ValueError("No favorites found for the user")
+
+        current_favourites = existing_favourites.split(", ")
+
+        if city_name not in current_favourites:
+            raise ValueError(f"{city_name} is not in your favorites")
+
+        current_favourites.remove(city_name)
+
+        updated_favourites = ", ".join(current_favourites)
+        await db.execute("UPDATE favourites SET city_name = $1 WHERE username = $2", updated_favourites, username)
+
+        return True
+
     except Exception as e:
         print(str(e))
     finally:

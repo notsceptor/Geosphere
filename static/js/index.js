@@ -171,6 +171,8 @@ function onClick(event) {
             toggleEscapePanel(false);
             toggleSearch(isEnlarged)
             isEnlarged = !isEnlarged;
+            zoomLevel = 5; // Initial zoom level
+            dragSpeed = 0.003;
         }
     }
 }
@@ -186,23 +188,24 @@ function toggleSearch(isEnlarged) {
 }
 
 
-let zoomLevel = 5; // Initial zoom level
-let zoomSpeed = 0.1; // Adjust the zoom speed as needed
+let zoomLevel = 5;
+let zoomSpeed = 0.1; 
 let dragSpeed = 0.003;
 let baseDragSpeed = 0.0025;
 
 window.addEventListener('wheel', event => {
-    if (!isEnlarged){
+    if (!isEnlarged) {
         event.preventDefault();
-        const delta = Math.sign(event.deltaY); // Check scroll direction
+        const delta = Math.sign(event.deltaY);
 
-        // Zoom in or out based on scroll direction
         zoomLevel += delta * zoomSpeed;
-        zoomLevel = Math.min(Math.max(zoomLevel, 0.75), 10); // Adjust min and max zoom levels
+        zoomLevel = Math.min(Math.max(zoomLevel, 0.75), 10); 
 
-        // Update camera position based on zoom level
         const newCameraPositionZ = isEnlarged ? 5 : zoomLevel;
-        gsap.to(camera.position, 0.5, { z: newCameraPositionZ, onUpdate: updateAspect });
+        gsap.to(camera.position, 0.5, {
+            z: newCameraPositionZ,
+            onUpdate: updateAspect
+        });
 
         dragSpeed = (baseDragSpeed * zoomLevel) * 0.25;
     }
@@ -256,9 +259,9 @@ searchButton.addEventListener('click', () => {
     const cityName = citySearchInput.value;
     if (cityName.trim() !== '') {
         performCitySearch(cityName)
-                    .then(data => {
-                        onCitySearch(data.latitude, data.longitude)
-                    })
+            .then(data => {
+                onCitySearch(data.latitude, data.longitude)
+            })
     }
 });
 
@@ -296,17 +299,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const bathymetryTexture = new THREE.TextureLoader().load('static/images/Topography_Earth.png');
     bathymetryTexture.wrapS = THREE.RepeatWrapping;
     bathymetryTexture.offset.x = -1475 / (2 * Math.PI);
-    const bathymetryMaterial = new THREE.MeshPhongMaterial({ map: bathymetryTexture });
+    const bathymetryMaterial = new THREE.MeshPhongMaterial({
+        map: bathymetryTexture
+    });
 
     const topographyTexture = new THREE.TextureLoader().load('static/images/Bathymetry_Earth.png');
     topographyTexture.wrapS = THREE.RepeatWrapping;
     topographyTexture.offset.x = -1475 / (2 * Math.PI);
-    const topographyMaterial = new THREE.MeshPhongMaterial({ map: topographyTexture });
+    const topographyMaterial = new THREE.MeshPhongMaterial({
+        map: topographyTexture
+    });
 
     const bathymetryThemeBtn = document.getElementById('bathymetry-theme-btn');
     const earthThemeBtn = document.getElementById('earth-theme-btn');
     const topographyThemeBtn = document.getElementById('topography-theme-btn');
-    
+
     globe.material = bathymetryMaterial;
     globe.material = topographyMaterial;
     globe.material = earthMaterial;
@@ -381,21 +388,21 @@ function performCitySearch(cityName) {
 }
 
 function convertWorldToLatLon(worldPosition) {
-    const radius = 0.5; // stored here for reminder purposes
-    const latCorrectionFactor = 1; // 3 (original value)
-    const lonCorrectionFactor = -1; // -1.5 (original value)
+    const radius = 0.5; 
+    const latCorrectionFactor = 1; 
+    const lonCorrectionFactor = -1; 
 
     const x = worldPosition.x;
     const y = worldPosition.y;
     const z = worldPosition.z;
 
-    const lon = Math.atan2(x, z); //inverse: const z = Math.tan(lon) * x;
-    const hyp = Math.sqrt(x * x + z * z); //inverse:const x = Math.sqrt(hyp * hyp - z * z);
-    const lat = Math.atan2(y, hyp); //inverse: const y = Math.tan(lat) * hyp;
+    const lon = Math.atan2(x, z); 
+    const hyp = Math.sqrt(x * x + z * z); 
+    const lat = Math.atan2(y, hyp); 
 
 
-    const latDeg = (lat * 180) / Math.PI + latCorrectionFactor; //inverse: const lat = (latDeg - latCorrectionFactor) / (180 / Math.PI);
-    let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor; //inverse: let lon = ((lonDeg - lonCorrectionFactor + 180) / 180) * Math.PI;
+    const latDeg = (lat * 180) / Math.PI + latCorrectionFactor; 
+    let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor; 
 
 
     return {
@@ -405,18 +412,16 @@ function convertWorldToLatLon(worldPosition) {
 }
 
 function convertLatLonToWorld(latDeg, lonDeg) {
-    const radius = 0.5; // stored here for reminder purposes
-    const latCorrectionFactor = 1; // 3 (original value)
-    const lonCorrectionFactor = -1; // -1.5 (original value)
+    const radius = 0.5; 
+    const latCorrectionFactor = 1; 
+    const lonCorrectionFactor = -1; 
     const reLatCorrectionFactor = 0.03;
 
-    // Reverse the conversion from degrees to radians
     let lat = (latDeg - latCorrectionFactor) * (Math.PI / 180);
     let lon = ((lonDeg - lonCorrectionFactor + 180) % 360 - 180) * (Math.PI / 180);
 
-    lat+=reLatCorrectionFactor;
+    lat += reLatCorrectionFactor;
 
-    // Calculate the position on the globe based on latitude and longitude
     const x = radius * Math.sin(lon) * Math.cos(lat);
     const y = radius * Math.sin(lat);
     const z = radius * Math.cos(lon) * Math.cos(lat);
@@ -454,7 +459,7 @@ const markers = [];
 
 function addMarker(position) {
 
-{        // Create marker geometry and material
+    { // Create marker geometry and material
         const markerGeometry = new THREE.RingGeometry(0.015, 0.02, 32); // Adjust initial size here
         const markerMaterial = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
@@ -485,7 +490,9 @@ function addMarker(position) {
 
         // Add a white dot to the center of the marker
         const dotGeometry = new THREE.CircleGeometry(0.005, 32);
-        const dotMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const dotMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00
+        });
         const dot = new THREE.Mesh(dotGeometry, dotMaterial);
         marker.add(dot); // Add the dot as a child of the marker
         dot.position.set(0, 0, 0.001); // Position the dot slightly above the marker's surface
@@ -514,7 +521,7 @@ function addMarker(position) {
             });
         }
 
-         // Function to reset the animation for the marker
+        // Function to reset the animation for the marker
         function resetAnimation() {
             gsap.to(marker.scale, {
                 x: 0.01, // Scale down the marker back to the original smaller size
@@ -531,7 +538,8 @@ function addMarker(position) {
         // Start the streaming animation
         animateStream();
 
-    }}
+    }
+}
 
 
 function removeMarkers() {
@@ -551,7 +559,7 @@ function removeMarkers() {
 }
 
 
-function setupLoading(){
+function setupLoading() {
     document.getElementById('country-name').innerHTML = "Loading Data..."
     document.getElementById('text-display').innerHTML = 'Hang tight while we work on fetching your data';
     document.getElementById('details').style.display = 'none';
@@ -621,11 +629,12 @@ async function onCitySearch(lat, lon) {
 
         const cameraPositionZ = isEnlarged ? 5 : 3.5;
         const globePositionX = isEnlarged ? 0 : 0.5;
-        
+
         gsap.to(camera.position, 0.75, {
             z: cameraPositionZ,
             onUpdate: updateAspect
-        }); gsap.to(globe.position, 0.75, {
+        });
+        gsap.to(globe.position, 0.75, {
             x: globePositionX
         });
 
@@ -638,6 +647,21 @@ async function onCitySearch(lat, lon) {
     }
 }
 
+async function removeFavourite(username, city) {
+    try {
+        const response = await fetch(`/remove_favourites?username=${username}&city_name=${city}`);
+        const data = await response.json();
+
+        if (data == true) {
+            const container = document.getElementById(`div-${city.trim()}`)
+            container.remove()
+        } else {
+            console.error("Error removing favourite");
+        }
+    } catch (error) {
+        console.error("Error removing favourite:", error);
+    }
+}
 
 const redSlider = document.getElementById('red-slider');
 const greenSlider = document.getElementById('green-slider');
@@ -648,17 +672,12 @@ function updateTextColor() {
     const redValue = redSlider.value;
     const greenValue = greenSlider.value;
     const blueValue = blueSlider.value;
-  
+
     textElements.forEach(element => {
-      element.style.color = `rgb(${redValue}, ${greenValue}, ${blueValue})`;
+        element.style.color = `rgb(${redValue}, ${greenValue}, ${blueValue})`;
     });
-  
-    // Set the background colors of sliders
-    redSlider.style.background = `linear-gradient(to right, rgb(${redValue}, 0, 0), rgb(${redValue}, 0, 0))`;
-    greenSlider.style.background = `linear-gradient(to right, rgb(0, ${greenValue}, 0), rgb(0, ${greenValue}, 0))`;
-    blueSlider.style.background = `linear-gradient(to right, rgb(0, 0, ${blueValue}), rgb(0, 0, ${blueValue}))`;
-  }
-  
+}
+
 redSlider.addEventListener('input', updateTextColor);
 greenSlider.addEventListener('input', updateTextColor);
 blueSlider.addEventListener('input', updateTextColor);
@@ -672,8 +691,8 @@ settingsTab.addEventListener('click', () => {
     sliderBarsContainer.classList.toggle('show');
     setTimeout(() => {
         settingsTab.classList.remove('spin');
-      }, 1000);
-    
+    }, 1000);
+
 });
 
 const fontSizeInput = document.getElementById('fontSizeInput');
@@ -689,50 +708,80 @@ function setupFavourites() {
     const favouritesButton = document.getElementById("favourites-button");
     const favouritesTab = document.getElementById("favourites-tab");
     const favouritesList = document.getElementById("favourite-cities-list");
-  
+
     const usernameContainer = document.getElementById("username-container");
     const username = usernameContainer.dataset.username;
-  
+
     if (favouritesButton) {
-      favouritesButton.addEventListener("click", async function () {
-        try {
-            favouritesTab.classList.toggle("active");
+        favouritesButton.addEventListener("click", async function() {
+            try {
+                favouritesTab.classList.toggle("active");
 
-          const response = await fetch(`/get_user_favourites?username=${username}`);
-          const data = await response.json();
-  
-          console.log(data);
-  
-          favouritesList.innerHTML = "";
-  
-          if (data && data.length > 0) {
-            data.forEach(function (city) {
-              const listItem = document.createElement("li");
-              const searchButton = document.createElement("button")
-              const removeButton = document.createElement("button")
-              listItem.id = "favList"
-              searchButton.className = "favBtn"
-              removeButton.className = "favBtn"
+                const response = await fetch(`/get_user_favourites?username=${username}`);
+                const data = await response.json();
 
-              listItem.textContent = city;
-              favouritesList.appendChild(listItem)
-              favouritesList.appendChild(searchButton)
-              favouritesList.appendChild(removeButton)
-            });
-  
-            favouritesTab.classList.remove("hidden");
-          } else {
-            favouritesList.innerHTML = "<li>No favourites found</li>";
-  
-            favouritesTab.classList.remove("hidden");
-          }
-        } catch (error) {
-          console.error("Error fetching favourites:", error);
-        }
-      });
+                favouritesList.innerHTML = "";
+
+                let cityArray = data[0].split(",")
+
+                const cityContainer = document.createElement("div");
+                const buttonContainer = document.createElement("div");
+                buttonContainer.className = "btnContainer"
+
+                if (cityArray && cityArray.length > 0) {
+                    cityArray.forEach(function(city) {
+                        const listItem = document.createElement("li");
+                        const btnDiv = document.createElement("div")
+                        const searchButton = document.createElement("button")
+                        const removeButton = document.createElement("button")
+
+                        btnDiv.id = `div-${city.trim()}`
+
+                        listItem.id = "favList"
+                        searchButton.className = "favBtn search"
+                        searchButton.textContent = "Search"
+                        removeButton.className = "favBtn remove";
+                        removeButton.textContent = "Remove"
+
+                        listItem.textContent = city;
+                        cityContainer.appendChild(listItem)
+                        buttonContainer.appendChild(searchButton)
+                        buttonContainer.appendChild(removeButton)
+
+                        btnDiv.appendChild(listItem)
+                        btnDiv.appendChild(searchButton)
+                        btnDiv.appendChild(removeButton)
+
+                        buttonContainer.appendChild(btnDiv)
+                        favouritesList.appendChild(cityContainer)
+                        favouritesList.appendChild(buttonContainer)
+
+                        searchButton.addEventListener("click", function() {
+                            performCitySearch(city)
+                                .then(data => {
+                                    onCitySearch(data.latitude, data.longitude)
+                                    favouritesTab.classList.toggle("active");
+                                })
+                        });
+
+                        removeButton.addEventListener("click", function() {
+                            removeFavourite(username, city);
+                        });
+                    });
+
+                    favouritesTab.classList.remove("hidden");
+                } else {
+                    favouritesList.innerHTML = "<li>No favourites found</li>";
+
+                    favouritesTab.classList.remove("hidden");
+                }
+            } catch (error) {
+                console.error("Error fetching favourites:", error);
+            }
+        });
     } else {
-      console.error("Favourites button not found");
+        console.error("Favourites button not found");
     }
-  }  
+}
 
 animate();
