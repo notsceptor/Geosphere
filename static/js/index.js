@@ -14,7 +14,7 @@ const starMaterial = new THREE.PointsMaterial({
 })
 
 const starVertices = []
-for (let i = 0; i < 100000; i++) {
+for (let i = 0; i < 200000; i++) {
     const x = (Math.random() - 0.5) * 2000
     const y = (Math.random() - 0.5) * 2000
     const z = -Math.random() * 3000
@@ -169,6 +169,7 @@ function onClick(event) {
             toggleInfoBox(!isEnlarged);
             fadeHowToUseMenu(isEnlarged);
             toggleEscapePanel(false);
+            toggleSearch(isEnlarged)
             isEnlarged = !isEnlarged;
         }
     }
@@ -179,6 +180,11 @@ function toggleEscapePanel(show) {
     escapePanel.style.display = show ? 'block' : 'none';
 }
 
+function toggleSearch(isEnlarged) {
+    const searchBar = document.getElementById('search-container');
+    searchBar.style.display = isEnlarged ? 'block' : 'none'
+}
+
 
 let zoomLevel = 5; // Initial zoom level
 let zoomSpeed = 0.1; // Adjust the zoom speed as needed
@@ -186,18 +192,20 @@ let dragSpeed = 0.003;
 let baseDragSpeed = 0.0025;
 
 window.addEventListener('wheel', event => {
-    event.preventDefault();
-    const delta = Math.sign(event.deltaY); // Check scroll direction
+    if (!isEnlarged){
+        event.preventDefault();
+        const delta = Math.sign(event.deltaY); // Check scroll direction
 
-    // Zoom in or out based on scroll direction
-    zoomLevel += delta * zoomSpeed;
-    zoomLevel = Math.min(Math.max(zoomLevel, 0.75), 10); // Adjust min and max zoom levels
+        // Zoom in or out based on scroll direction
+        zoomLevel += delta * zoomSpeed;
+        zoomLevel = Math.min(Math.max(zoomLevel, 0.75), 10); // Adjust min and max zoom levels
 
-    // Update camera position based on zoom level
-    const newCameraPositionZ = isEnlarged ? 5 : zoomLevel;
-    gsap.to(camera.position, 0.5, { z: newCameraPositionZ, onUpdate: updateAspect });
+        // Update camera position based on zoom level
+        const newCameraPositionZ = isEnlarged ? 5 : zoomLevel;
+        gsap.to(camera.position, 0.5, { z: newCameraPositionZ, onUpdate: updateAspect });
 
-    dragSpeed = (baseDragSpeed * zoomLevel) * 0.25;
+        dragSpeed = (baseDragSpeed * zoomLevel) * 0.25;
+    }
 });
 
 
@@ -281,10 +289,11 @@ function popupPageLoad() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    popupPageLoad()
-    fadeHowToUseMenu(!isEnlarged)
+    popupPageLoad();
+    fadeHowToUseMenu(!isEnlarged);
+    setupFavourites();
 
-    /*const bathymetryTexture = new THREE.TextureLoader().load('static/images/Topography_Earth.png');
+    const bathymetryTexture = new THREE.TextureLoader().load('static/images/Topography_Earth.png');
     bathymetryTexture.wrapS = THREE.RepeatWrapping;
     bathymetryTexture.offset.x = -1475 / (2 * Math.PI);
     const bathymetryMaterial = new THREE.MeshPhongMaterial({ map: bathymetryTexture });
@@ -326,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
     topographyThemeBtn.addEventListener('click', () => {
         globe.material = topographyMaterial;
         setActiveButton(topographyThemeBtn);
-    });*/
-})
+    });
+});
 
 function toggleInfoBox(show) {
     const leftValue = show ? '0' : '-100%';
@@ -380,12 +389,14 @@ function convertWorldToLatLon(worldPosition) {
     const y = worldPosition.y;
     const z = worldPosition.z;
 
-    const lon = Math.atan2(x, z);
-    const hyp = Math.sqrt(x * x + z * z);
-    const lat = Math.atan2(y, hyp);
+    const lon = Math.atan2(x, z); //inverse: const z = Math.tan(lon) * x;
+    const hyp = Math.sqrt(x * x + z * z); //inverse:const x = Math.sqrt(hyp * hyp - z * z);
+    const lat = Math.atan2(y, hyp); //inverse: const y = Math.tan(lat) * hyp;
 
-    const latDeg = (lat * 180) / Math.PI + latCorrectionFactor;
-    let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor;
+
+    const latDeg = (lat * 180) / Math.PI + latCorrectionFactor; //inverse: const lat = (latDeg - latCorrectionFactor) / (180 / Math.PI);
+    let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor; //inverse: let lon = ((lonDeg - lonCorrectionFactor + 180) / 180) * Math.PI;
+
 
     return {
         lat: latDeg,
@@ -393,13 +404,26 @@ function convertWorldToLatLon(worldPosition) {
     };
 }
 
-function convertLatLonToWorld(lat, lon, radius) {
-    const x = 0.5 * Math.cos(lat) * Math.cos(lon);
-    const y = 0.5 * Math.cos(lat) * Math.sin(lon);
-    const z = 0.5 * Math.sin(lat);
+function convertLatLonToWorld(latDeg, lonDeg) {
+    const radius = 0.5; // stored here for reminder purposes
+    const latCorrectionFactor = 1; // 3 (original value)
+    const lonCorrectionFactor = -1; // -1.5 (original value)
+    const reLatCorrectionFactor = 0.03;
+
+    // Reverse the conversion from degrees to radians
+    let lat = (latDeg - latCorrectionFactor) * (Math.PI / 180);
+    let lon = ((lonDeg - lonCorrectionFactor + 180) % 360 - 180) * (Math.PI / 180);
+
+    lat+=reLatCorrectionFactor;
+
+    // Calculate the position on the globe based on latitude and longitude
+    const x = radius * Math.sin(lon) * Math.cos(lat);
+    const y = radius * Math.sin(lat);
+    const z = radius * Math.cos(lon) * Math.cos(lat);
 
     return new THREE.Vector3(x, y, z);
 }
+
 
 function updateAspect() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -539,19 +563,15 @@ async function onCitySearch(lat, lon) {
         isEnlarged = !isEnlarged;
     }
 
-    const worldCoordinates = convertLatLonToWorld(lat, lon, 0.5);
-    //globe.worldToLocal(worldCoordinates);
+    const worldCoordinates = convertLatLonToWorld(lat, lon);
 
     const direction = worldCoordinates.clone().sub(globe.position).normalize();
     const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
     const angleOffsetVertical = Math.asin(direction.y);
 
-    console.log(worldCoordinates)
-
     gsap.to(globe.rotation, 1, {
-        x: worldCoordinates.x,
-        y: worldCoordinates.y,
-        z: worldCoordinates.z
+        y: -angleOffsetHorizontal,
+        x: angleOffsetVertical
     });
 
     if (!isEnlarged) {
@@ -563,56 +583,156 @@ async function onCitySearch(lat, lon) {
         addMarker(worldCoordinates);
 
         if (!isEnlarged) {
-            getWeatherDetails(lat, lon)
-                .then(data => {
-                    const convertedTemp = data.main.temp - 273.15;
-                    document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
-                    if (data.countryName) {
-                        const flag = document.getElementById('flag');
-                        flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
-                        flag.style.display = 'block';
+            try {
+                const data = await getWeatherDetails(lat, lon);
+                const convertedTemp = data.main.temp - 273.15;
 
-                        document.getElementById('details').style.display = 'block';
-                        document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
-                        document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
-                        console.log(data);
-                        document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
+                document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
+                if (data.countryName) {
+                    const flag = document.getElementById('flag');
+                    flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
+                    flag.style.display = 'block';
 
-                        const localTime = getLocalTimeFromOffset(data.timezone);
-                        document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span class="value">${convertedTemp.toFixed(2)}</span>C`;
-                        document.getElementById('time').innerHTML = `<span class="label">LOCAL TIME:</span>&nbsp;<span class="value">${localTime.toLocaleTimeString()}</span>`;
-                        document.getElementById('coord-lon').innerHTML = `<span class="label">LONGITUDE:</span>&nbsp;<span class="value">${data.coord.lon}</span>`;
-                        document.getElementById('coord-lat').innerHTML = `<span class="label">LATITUDE:</span>&nbsp;<span class="value">${data.coord.lat}</span>`;
-                        document.getElementById('visibility').innerHTML = `<span class="label">VISIBILITY:</span>&nbsp;<span class="value">${data.visibility}</span> meters`;
-                        document.getElementById('wind-speed').innerHTML = `<span class="label">WIND SPEED:</span>&nbsp;<span class="value">${data.wind.speed}</span> m/s`;
-                        document.getElementById('humidity').innerHTML = `<span class="label">HUMIDITY:</span>&nbsp;<span class="value">${data.main.humidity}</span>%`;
-                        document.getElementById('pressure').innerHTML = `<span class="label">PRESSURE:</span>&nbsp;<span class="value">${data.main.pressure}</span> hPa`;
-                        document.getElementById('escape').style.display = 'block';
-                    } else {
-                        document.getElementById('text-display').innerHTML = 'The location you clicked is not a valid country, or close enough to a nearby country. Try clicking elsewhere to locate country data.';
-                        document.getElementById('details').style.display = 'none';
-                        document.getElementById('flag').style.display = 'none';
-                    }
-                });
+                    document.getElementById('details').style.display = 'block';
+                    document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
+                    document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
+                    document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
+
+                    const localTime = getLocalTimeFromOffset(data.timezone);
+                    document.getElementById('time').innerHTML = `<span class="label">LOCAL TIME:</span>&nbsp;<span class="value">${localTime.toLocaleTimeString()}</span>`;
+                    document.getElementById('coord-lon').innerHTML = `<span class="label">LONGITUDE:</span>&nbsp;<span class="value">${data.coord.lon}</span>`;
+                    document.getElementById('coord-lat').innerHTML = `<span class="label">LATITUDE:</span>&nbsp;<span class="value">${data.coord.lat}</span>`;
+                    document.getElementById('visibility').innerHTML = `<span class="label">VISIBILITY:</span>&nbsp;<span class="value">${data.visibility}</span> meters`;
+                    document.getElementById('wind-speed').innerHTML = `<span class="label">WIND SPEED:</span>&nbsp;<span class="value">${data.wind.speed}</span> m/s`;
+                    document.getElementById('humidity').innerHTML = `<span class="label">HUMIDITY:</span>&nbsp;<span class="value">${data.main.humidity}</span>%`;
+                    document.getElementById('pressure').innerHTML = `<span class="label">PRESSURE:</span>&nbsp;<span class="value">${data.main.pressure}</span> hPa`;
+                    document.getElementById('escape').style.display = 'block';
+                } else {
+                    document.getElementById('text-display').innerHTML = 'The location you clicked is not a valid country, or close enough to a nearby country. Try clicking elsewhere to locate country data.';
+                    document.getElementById('details').style.display = 'none';
+                    document.getElementById('flag').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error fetching weather details:', error);
+            }
         }
 
         document.getElementById('escape').style.display = 'none';
 
         const cameraPositionZ = isEnlarged ? 5 : 3.5;
         const globePositionX = isEnlarged ? 0 : 0.5;
-
+        
         gsap.to(camera.position, 0.75, {
             z: cameraPositionZ,
             onUpdate: updateAspect
-        });
-        gsap.to(globe.position, 0.75, {
+        }); gsap.to(globe.position, 0.75, {
             x: globePositionX
         });
 
+
+
         toggleInfoBox(!isEnlarged);
         fadeHowToUseMenu(isEnlarged);
+        toggleSearch(isEnlarged)
         isEnlarged = !isEnlarged;
     }
 }
+
+
+const redSlider = document.getElementById('red-slider');
+const greenSlider = document.getElementById('green-slider');
+const blueSlider = document.getElementById('blue-slider');
+const textElements = document.querySelectorAll('p, h2, h3, h4, h5, h6, .label, .value, li');
+
+function updateTextColor() {
+    const redValue = redSlider.value;
+    const greenValue = greenSlider.value;
+    const blueValue = blueSlider.value;
+  
+    textElements.forEach(element => {
+      element.style.color = `rgb(${redValue}, ${greenValue}, ${blueValue})`;
+    });
+  
+    // Set the background colors of sliders
+    redSlider.style.background = `linear-gradient(to right, rgb(${redValue}, 0, 0), rgb(${redValue}, 0, 0))`;
+    greenSlider.style.background = `linear-gradient(to right, rgb(0, ${greenValue}, 0), rgb(0, ${greenValue}, 0))`;
+    blueSlider.style.background = `linear-gradient(to right, rgb(0, 0, ${blueValue}), rgb(0, 0, ${blueValue}))`;
+  }
+  
+redSlider.addEventListener('input', updateTextColor);
+greenSlider.addEventListener('input', updateTextColor);
+blueSlider.addEventListener('input', updateTextColor);
+
+
+const settingsTab = document.getElementById('settings-tab');
+const sliderBarsContainer = document.getElementById('slider-bars-container');
+
+settingsTab.addEventListener('click', () => {
+    settingsTab.classList.add('spin');
+    sliderBarsContainer.classList.toggle('show');
+    setTimeout(() => {
+        settingsTab.classList.remove('spin');
+      }, 1000);
+    
+});
+
+const fontSizeInput = document.getElementById('fontSizeInput');
+
+fontSizeInput.addEventListener('input', function() {
+    const fontSize = this.value + 'px';
+    textElements.forEach(element => {
+        element.style.fontSize = fontSize;
+    });
+});
+
+function setupFavourites() {
+    const favouritesButton = document.getElementById("favourites-button");
+    const favouritesTab = document.getElementById("favourites-tab");
+    const favouritesList = document.getElementById("favourite-cities-list");
+  
+    const usernameContainer = document.getElementById("username-container");
+    const username = usernameContainer.dataset.username;
+  
+    if (favouritesButton) {
+      favouritesButton.addEventListener("click", async function () {
+        try {
+            favouritesTab.classList.toggle("active");
+
+          const response = await fetch(`/get_user_favourites?username=${username}`);
+          const data = await response.json();
+  
+          console.log(data);
+  
+          favouritesList.innerHTML = "";
+  
+          if (data && data.length > 0) {
+            data.forEach(function (city) {
+              const listItem = document.createElement("li");
+              const searchButton = document.createElement("button")
+              const removeButton = document.createElement("button")
+              listItem.id = "favList"
+              searchButton.className = "favBtn"
+              removeButton.className = "favBtn"
+
+              listItem.textContent = city;
+              favouritesList.appendChild(listItem)
+              favouritesList.appendChild(searchButton)
+              favouritesList.appendChild(removeButton)
+            });
+  
+            favouritesTab.classList.remove("hidden");
+          } else {
+            favouritesList.innerHTML = "<li>No favourites found</li>";
+  
+            favouritesTab.classList.remove("hidden");
+          }
+        } catch (error) {
+          console.error("Error fetching favourites:", error);
+        }
+      });
+    } else {
+      console.error("Favourites button not found");
+    }
+  }  
 
 animate();

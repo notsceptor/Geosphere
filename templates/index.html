@@ -22,31 +22,74 @@
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300&display=swap" rel="stylesheet">
 	</head>
 	<body>
-
-    <div id="bottom-panel">
-      <button id="bathymetry-theme-btn">Bathymetry</button>
-      <button id="earth-theme-btn">Earth</button>
-      <button id="topography-theme-btn">Topography</button>
-    </div>
-
-
-    <div id="how-to-use-menu" class="how-to-use-menu hidden">
+    <div id="username-container" data-username="{{ username }}"></div>
+    <div id="how-to-use-menu" class="how-to-use-menu hidden text-color-change">
       <h1>How to Use</h1>
       <h2>About Us</h2>
       <p>Geosphere is an online globe view tool that allows you to click anywhere on the globe and stream the relevant countries name, temperature, location and weather data through API calls utilising longitude and latitude characteristics. Geosphere is accurate to within roughly 30km</p>
       <h2>Instructions</h2>
-      <p>To begin, use the <b>[ALT]</b> key along with <b>[MOUSE DOWN]</b> to drag around the globe to a desirable view. Then click with <b>[MOUSE DOWN]</b> to zoom in on the location of choice, and stream the data. Once your done, <b>[MOUSE DOWN]</b> on the globe again to be pulled back out of the view. Alternativley, you can also utilise our "Search" key at the top to search for a particular city of your choice on the globe.</p>
-      <p>For the best experience please utilise <b>FULLSCREEN</b> for all features of the application to work optimisably</p>
+      <ul>
+        <li>Click with the mouse while holding the alt key to pan the globe</li>
+        <li>Utilise the scroll wheel to zoom in on the globe</li>
+        <li>Once a suitable location has been found, left click to stream that location's data</li>
+        <li>Adjust visibility settings with the settings icon in the bottom left.</li>
+        <li>For the best experience please utilise <b>FULLSCREEN</b> for all features of the application to work optimisably</li>
+      </ul>
     </div>
 
     <div class="parallax"></div>
     <div class="stars"></div>
         <script type="module" src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <div id="welcome-message">
+      {% if username %}
+          <p>Logged in as <b>{{ username }}</b></p>
+      {% endif %}
+    </div>
     <div id="search-container">
-      <input type="text" id="city-search" placeholder="Search by city name">
+      <input type="text" id="city-search" placeholder="SEARCH BY CITY NAME">
       <button id="search-button">Search</button>
-    </div>      
+    </div>
+    <button id="favourites-button">
+      <i class="fas fa-bookmark"></i>
+    </button>
+    
+    <div id="favourites-tab" class="favourites-tab">
+      <h1 id="favourites-title">Favourites</h1>
+      <ul id="favourite-cities-list"></ul>
+    </div>
     <div id="globe-container"></div>
+
+    <div id="settings-tab"><i class="fa fa-cog spin" style="font-size:36px;" color="white"></i></div>
+    <div id="slider-bars-container">
+        <div id="settings-title">
+          <h2>Settings</h2>
+        </div>
+        <div id="red-slider-container">
+            <label for="red-slider">R</label>
+            <input type="range" id="red-slider" min="0" max="255" value="255">
+        </div>
+        <div id="green-slider-container">
+            <label for="green-slider">G</label>
+            <input type="range" id="green-slider" min="0" max="255" value="255">
+        </div>
+        <div id="blue-slider-container">
+            <label for="blue-slider">B</label>
+            <input type="range" id="blue-slider" min="0" max="255" value="255">
+        </div>
+        <div id="bottom-panel">
+          <button id="earth-theme-btn">Earth</button>
+          <button id="bathymetry-theme-btn">Topography</button>
+          <button id="topography-theme-btn">Bathymetry</button>
+        </div>
+        <div id="font-size-container">
+          <label for="fontSizeInput">Font Size:</label>
+          <input type="number" id="fontSizeInput" min="10" max="50" value="16">
+        </div>
+        <form method="post" action="/logout" class="mt-3">
+          <input type="submit" value="Logout">
+        </form>
+    </div>
+    
     <div id="info-box">
       <img id="flag" src="">
       <div id="title-bar">
@@ -115,7 +158,8 @@
       
 
     </div>
-    
+
+
     
     
 	</body>

@@ -42,7 +42,8 @@ async def login():
             if result:
                 flash('Login successful!', 'success')
                 session['logged_in'] = True
-                return redirect(url_for('dashboard'))
+                session['username'] = username
+                return render_template('index.html', username=username)
             else:
                 flash('Login unsuccessful. Please check your username and password.', 'danger')
         finally:
@@ -102,6 +103,63 @@ async def search_city():
             return jsonify({'error': 'City not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/add_city_to_favourites', methods=['POST'])
+async def add_city_to_favourites_route():
+    username = request.form.get('username')
+    city_name = request.form.get('city_name')
+
+    if not username or not city_name:
+        return jsonify({'error': 'Username or city_name not provided'}), 400
+
+    try:
+        await add_city_to_favourites(username, city_name)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/get_user_favourites', methods=['GET', 'POST'])
+async def get_user_favourites_route():
+    username = request.args.get('username')
+    try:
+        result = await get_user_favourites(username)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+async def get_user_favourites(username):
+    try:
+        pool = await create_pool()
+        db = await pool.acquire()
+
+        result = await db.fetch("SELECT city_name FROM favourites WHERE username = $1", username)
+        return [row['city_name'] for row in result]
+    except Exception as e:
+        print(str(e))
+    finally:
+        await pool.release(db)
+        await close_pool(pool)
+
+async def add_city_to_favourites(username, city_name):
+    try:
+        pool = await create_pool()
+        db = await pool.acquire()
+
+        existing_favourite = await db.fetchrow(
+            "SELECT city_name FROM favourites WHERE username = $1 AND city_name = $2",
+            username,
+            city_name,
+        )
+
+        if existing_favourite:
+            raise ValueError(f"{city_name} is already in your favourites")
+
+        await db.execute("INSERT INTO favourites (username, city_name) VALUES ($1, $2)", username, city_name)
+    except Exception as e:
+        print(str(e))
+    finally:
+        await pool.release(db)
+        await close_pool(pool)
 
 async def get_weather_details(lat, lon):
     weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=bef596d12f785aff7d562a0506c5b998'
