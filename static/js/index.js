@@ -360,7 +360,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closePopupBtn.addEventListener('click', closePopup);
 
+    const logoutBtn = document.getElementById('logoutBtn')
+    logoutBtn.addEventListener('click', logout);
 });
+
+function logout() {
+    fetch('/logout')
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            console.error('Logout failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error during logout:', error);
+    });
+}
 
 function showPopup(text) {
     const popupText = document.getElementById("popup-text");
@@ -732,7 +748,7 @@ async function addToFavorites(username, city) {
 const redSlider = document.getElementById('red-slider');
 const greenSlider = document.getElementById('green-slider');
 const blueSlider = document.getElementById('blue-slider');
-const textElements = document.querySelectorAll('p, h2, h3, h4, h5, h6, .label, .value, li');
+const textElements = document.querySelectorAll('p:not(.disclude), h2:not(.disclude), h3, h4, h5, h6, .label, .value, li');
 
 function updateTextColor() {
     const redValue = redSlider.value;

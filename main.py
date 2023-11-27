@@ -28,6 +28,7 @@ class LoginForm(Form):
 @app.route('/login', methods=['GET', 'POST'])
 async def login():
     form = LoginForm(request.form)
+    error_message = None 
 
     if request.method == 'POST' and form.validate():
         username = form.username.data
@@ -40,17 +41,29 @@ async def login():
             result = await db.fetchrow("SELECT * FROM users WHERE username = $1 AND password = $2", username, password)
 
             if result:
-                flash('Login successful!', 'success')
                 session['logged_in'] = True
                 session['username'] = username
                 return render_template('index.html', username=username)
             else:
-                flash('Login unsuccessful. Please check your username and password.', 'danger')
+                error_message = 'Your details are incorrect'
         finally:
             await pool.release(db)
             await close_pool(pool)
 
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, error_message=error_message)
+
+@app.route('/about')
+async def about():
+    return render_template('about.html')
+
+@app.route('/api')
+async def api():
+    return render_template('api.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('dashboard')) 
 
 @app.route('/dashboard')
 async def dashboard():

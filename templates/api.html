@@ -216,28 +216,28 @@
     <div class="stars">
     </div>
     <div class="title">
-        <h1>ABOUT US</h1>
+        <h1>API's</h1>
     </div>
     <div class="question-text" id="questionText1">
-      <h2>SO WHAT IS GEOSPHERE?</h2>
+      <h2>GEONAMES</h2>
     </div>
     
     <div class="about-text" id="aboutText1">
-        <p><b>Geosphere</b> is an online planet viewer that allows you to click anywhere on the globe and retrieve the country, weather data and other graphical based data from the point of click. Its main goal is to utilise a simplistic API software and allow users to retrieve weather data around the globe in just one application, instead of researching through web-page after web-page. It’s more important objective is to also display temperature and pressude details to raise awareness of the planet and its growing concerns for climate change.</p>
+        <p><b>Geonames</b> (https://api.openweathermap.org) is an API that utilises Longitude and Latitude data to return the relevant country that's clicked within those boundaries. We use this to translate the current city you are clicking on and the country it's from. This is then translated into our Flags API to return the countries flag you see in the top left.</p>
     </div>
     <div class="question-text" id="questionText2">
-        <h2>HOW DOES IT WORK?</h2>
+        <h2>Open Weather Map</h2>
       </div>
       
     <div class="about-text" id="aboutText2">
-        <p><b>Geosphere</b> utilises API's to perform it's tasks, which can be found referenced on the API page within the NAV bar. Our physical world map translate's it's coordinates to real world longitude and latitude values and enters that into API strings to retrieve localised weather and temperature data.</p>
+        <p><b>Open Weather Map</b> (http://api.geonames.org) is our weather data API that pulls weather data from a specific station based on Longitude and Latitude coordinates of the globe.</p>
     </div>
     <div class="question-text" id="questionText3">
-        <h2>ABOUT THE AUTHORS</h2>
+        <h2>Flags API</h2>
       </div>
       
     <div class="about-text" id="aboutText3">
-        <p><b>Geosphere</b> was developed as a University project for Bournemouth University by a team of five software engineers. The main coding developers were Harry Wilson and James Buttery, with the documentation and case-study material supplied and written by Samuel Annear, Jai Axe and Smeet Soni</p>
+        <p><b>Flags API</b> (https://flagsapi.com) is our final API that pulls the countries flag based on an input of said country. This is used in correspondence with Geonames as stated before.</p>
     </div>
 
     <button class="toggle-button" onclick="toggleSidePanel()">III</button>

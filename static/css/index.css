@@ -592,3 +592,17 @@ h3{
 #popup.hidden {
   display: none;
 }
+
+#logoutBtn {
+  position: absolute;
+  bottom: 4.6%;
+  right: 8%;
+  margin-top: 5px;
+  margin-right: 10px;
+  cursor: pointer;
+  font-size: 30px;
+  color: #fff;
+  z-index: 1000;
+  background: none;
+  border: none;
+}
