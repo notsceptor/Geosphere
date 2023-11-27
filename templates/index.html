@@ -23,6 +23,7 @@
 	</head>
 	<body>
     <div id="username-container" data-username="{{ username }}"></div>
+    <div id="city-container" data-city=""></div>
     <div id="how-to-use-menu" class="how-to-use-menu hidden text-color-change">
       <h1>How to Use</h1>
       <h2>About Us</h2>
@@ -56,7 +57,7 @@
     <div id="favourites-tab" class="favourites-tab">
       <h1 id="favourites-title">Favourites</h1>
       <ul id="favourite-cities-list">
-        
+        <li>Please hold tight while we fetch your favourites data...</li>
       </ul>
     </div>
     <div id="globe-container"></div>
@@ -99,7 +100,6 @@
       </div>
       <p id="text-display">You are currently viewing data with regards to UNKNOWN</p>
       <div id="details">
-        
         <section class="data-section">
           <h3>Data</h3>
           
@@ -155,14 +155,19 @@
             <h2 id="pressure"></h2>
           </div>
         </section>
+        <button id="add-to-favourites-info">
+          <p> <p>
+          <p>Add to favourites:  </p>
+          <i class="fas fa-star"></i>
+        </button>
       </div>
       <p id="escape">To escape the panel <b>[MOUSE LMB]</b> on the globe</p>
       
 
     </div>
-
-
-    
-    
+    <div id="popup" class="hidden">
+      <p id="popup-text"></p>
+      <button id="closePopup">X</button>
+    </div>  
 	</body>
 </html>

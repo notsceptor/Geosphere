@@ -104,16 +104,16 @@ async def search_city():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-@app.route('/add_city_to_favourites', methods=['POST'])
+@app.route('/add_to_favourites', methods=['POST'])
 async def add_city_to_favourites_route():
-    username = request.form.get('username')
-    city_name = request.form.get('city_name')
+    username = request.args.get('username')
+    city_name = request.args.get('city_name')
 
     if not username or not city_name:
         return jsonify({'error': 'Username or city_name not provided'}), 400
 
     try:
-        await add_city_to_favourites(username, city_name)
+        await add_to_favourites(username, city_name)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -183,26 +183,57 @@ async def remove_favourites(username, city_name):
         await pool.release(db)
         await close_pool(pool)
 
-async def add_city_to_favourites(username, city_name):
+async def add_to_favourites(username, city_name):
     try:
         pool = await create_pool()
         db = await pool.acquire()
 
-        existing_favourite = await db.fetchrow(
-            "SELECT city_name FROM favourites WHERE username = $1 AND city_name = $2",
+        city_name = city_name.strip()
+
+        user_exists = await db.fetchval(
+            "SELECT username FROM users WHERE username = $1",
             username,
-            city_name,
         )
 
-        if existing_favourite:
-            raise ValueError(f"{city_name} is already in your favourites")
+        if not user_exists:
+            raise ValueError(f"User with username {username} does not exist")
 
-        await db.execute("INSERT INTO favourites (username, city_name) VALUES ($1, $2)", username, city_name)
+        existing_favourites = await db.fetchval(
+            "SELECT city_name FROM favourites WHERE username = $1",
+            username,
+        )
+
+        if not user_exists:
+            await db.execute(
+                "INSERT INTO favourites (username, city_name) VALUES ($1, $2)",
+                username,
+                city_name,
+            )
+            return True
+
+        current_favourites = existing_favourites.split(", ")
+
+        if city_name in current_favourites:
+            raise ValueError(f"{city_name} is already in your favorites")
+
+        current_favourites.append(city_name)
+
+        updated_favourites = ", ".join(current_favourites)
+        await db.execute(
+            "UPDATE favourites SET city_name = $1 WHERE username = $2",
+            updated_favourites,
+            username,
+        )
+
+        return True
+
     except Exception as e:
         print(str(e))
     finally:
         await pool.release(db)
         await close_pool(pool)
+
+
 
 async def get_weather_details(lat, lon):
     weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=bef596d12f785aff7d562a0506c5b998'

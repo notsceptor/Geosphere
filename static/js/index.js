@@ -79,6 +79,8 @@ const previousMousePosition = {
 window.addEventListener('click', onClick);
 
 
+
+
 function onClick(event) {
     event.preventDefault();
 
@@ -97,10 +99,7 @@ function onClick(event) {
 
         const latLon = convertWorldToLatLon(clickedPosition);
 
-        console.log(isEnlarged)
-
         if (!event.altKey && !isEnlarged) {
-            toggleEscapePanel(isEnlarged);
             setupLoading();
             if (isEnlarged) {
                 removeMarkers();
@@ -121,6 +120,11 @@ function onClick(event) {
 
                             document.getElementById('details').style.display = 'block';
                             document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
+
+                            if (data.name) {
+                                document.getElementById('city-container').dataset.city = data.name
+                            }
+
                             document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
 
                             document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
@@ -168,9 +172,9 @@ function onClick(event) {
 
             toggleInfoBox(!isEnlarged);
             fadeHowToUseMenu(isEnlarged);
-            toggleEscapePanel(false);
             toggleSearch(isEnlarged)
             isEnlarged = !isEnlarged;
+            toggleEscapePanel(isEnlarged);
             zoomLevel = 5; // Initial zoom level
             dragSpeed = 0.003;
         }
@@ -343,7 +347,29 @@ document.addEventListener('DOMContentLoaded', () => {
         globe.material = topographyMaterial;
         setActiveButton(topographyThemeBtn);
     });
+
+    const popup = document.getElementById('popup');
+    const closePopupBtn = document.getElementById('closePopup');
+
+    function closePopup() {
+        popup.style.opacity = 0;
+        setTimeout(() => {
+            popup.classList.add('hidden');
+        }, 500);
+    }
+
+    closePopupBtn.addEventListener('click', closePopup);
+
 });
+
+function showPopup(text) {
+    const popupText = document.getElementById("popup-text");
+    popupText.innerText = text;
+
+    const popup = document.getElementById("popup");
+    popup.style.opacity = 1;
+    popup.classList.remove('hidden');
+}
 
 function toggleInfoBox(show) {
     const leftValue = show ? '0' : '-100%';
@@ -352,6 +378,15 @@ function toggleInfoBox(show) {
         ease: 'power2.' + (show ? 'out' : 'in')
     });
     infoBox.classList.toggle('hidden', !show);
+
+    const favouritesTab = document.getElementById('favourites-tab')
+    const favouritesButton = document.getElementById('favourites-button')
+
+    if (show) {
+        favouritesTab.classList.remove('active');
+    }
+
+    favouritesButton.disabled = show ? true : false
 
     if (!show) {
         removeMarkers();
@@ -603,6 +638,9 @@ async function onCitySearch(lat, lon) {
 
                     document.getElementById('details').style.display = 'block';
                     document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
+                    if (data.name) {
+                        document.getElementById('city-container').dataset.city = data.name
+                    }
                     document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
                     document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
 
@@ -625,8 +663,6 @@ async function onCitySearch(lat, lon) {
             }
         }
 
-        document.getElementById('escape').style.display = 'none';
-
         const cameraPositionZ = isEnlarged ? 5 : 3.5;
         const globePositionX = isEnlarged ? 0 : 0.5;
 
@@ -644,6 +680,7 @@ async function onCitySearch(lat, lon) {
         fadeHowToUseMenu(isEnlarged);
         toggleSearch(isEnlarged)
         isEnlarged = !isEnlarged;
+        toggleEscapePanel(isEnlarged);
     }
 }
 
@@ -655,6 +692,7 @@ async function removeFavourite(username, city) {
         if (data == true) {
             const container = document.getElementById(`div-${city.trim()}`)
             container.remove()
+            showPopup(`${city} has been successfully removed from your favourites`)
         } else {
             console.error("Error removing favourite");
         }
@@ -663,6 +701,34 @@ async function removeFavourite(username, city) {
     }
 }
 
+function gatherFavouritesInfo() {
+    const city = document.getElementById('city-container').dataset.city;
+    const usernameContainer = document.getElementById("username-container");
+    const username = usernameContainer.dataset.username;
+
+    if (city.trim() !== '') {
+        addToFavorites(username, city);
+    } else {
+        alert('Please enter a city name before adding to favorites.');
+    }
+}
+
+async function addToFavorites(username, city) {
+    const url = `/add_to_favourites?username=${username}&city_name=${city}`;
+
+    try {
+        const response = await fetch(url, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            showPopup(`${city} has been successfully added to your favourites`)
+        } else {
+            alert(`Failed to add ${city} to favorites. Please try again.`);
+        }
+    } catch (error) {
+        console.error('Error adding to favorites:', error);
+    }
+}
 const redSlider = document.getElementById('red-slider');
 const greenSlider = document.getElementById('green-slider');
 const blueSlider = document.getElementById('blue-slider');
@@ -682,6 +748,8 @@ redSlider.addEventListener('input', updateTextColor);
 greenSlider.addEventListener('input', updateTextColor);
 blueSlider.addEventListener('input', updateTextColor);
 
+const favouriteACity = document.getElementById('add-to-favourites-info')
+favouriteACity.addEventListener('click', gatherFavouritesInfo);
 
 const settingsTab = document.getElementById('settings-tab');
 const sliderBarsContainer = document.getElementById('slider-bars-container');
