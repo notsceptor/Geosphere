@@ -114,6 +114,13 @@ function onClick(event) {
 
                         document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
                         if (data.countryName) {
+                            const favouritesBox = document.getElementById('add-to-favourites-div')
+                            if (data.name) {
+                                favouritesBox.style.display = 'block';
+                            } else {
+                                favouritesBox.style.display = 'none';
+                            }
+
                             const flag = document.getElementById('flag');
                             flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
                             flag.style.display = 'block';
@@ -122,7 +129,7 @@ function onClick(event) {
                             document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
 
                             if (data.name) {
-                                document.getElementById('city-container').dataset.city = data.name
+                                document.getElementById('city-container').dataset.city = `${data.name}:${data.countryCode}`
                             }
 
                             document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
@@ -264,8 +271,20 @@ searchButton.addEventListener('click', () => {
     if (cityName.trim() !== '') {
         performCitySearch(cityName)
             .then(data => {
-                onCitySearch(data.latitude, data.longitude)
+                onCitySearch(cityName, data.latitude, data.longitude)
             })
+    }
+});
+
+citySearchInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+        const cityName = citySearchInput.value;
+        if (cityName.trim() !== '') {
+            performCitySearch(cityName)
+                .then(data => {
+                    onCitySearch(cityName, data.latitude, data.longitude);
+                });
+        }
     }
 });
 
@@ -440,7 +459,7 @@ function performCitySearch(cityName) {
 
 function convertWorldToLatLon(worldPosition) {
     const radius = 0.5; 
-    const latCorrectionFactor = 1; 
+    const latCorrectionFactor = 0; 
     const lonCorrectionFactor = -1; 
 
     const x = worldPosition.x;
@@ -451,10 +470,8 @@ function convertWorldToLatLon(worldPosition) {
     const hyp = Math.sqrt(x * x + z * z); 
     const lat = Math.atan2(y, hyp); 
 
-
     const latDeg = (lat * 180) / Math.PI + latCorrectionFactor; 
     let lonDeg = ((lon * 180) / Math.PI + 540) % 360 - 180 + lonCorrectionFactor; 
-
 
     return {
         lat: latDeg,
@@ -617,21 +634,12 @@ function setupLoading() {
     document.getElementById('flag').style.display = 'none';
 }
 
-async function onCitySearch(lat, lon) {
+async function onCitySearch(entry, lat, lon) {
     if (isEnlarged) {
         isEnlarged = !isEnlarged;
     }
 
-    const worldCoordinates = convertLatLonToWorld(lat, lon);
-
-    const direction = worldCoordinates.clone().sub(globe.position).normalize();
-    const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
-    const angleOffsetVertical = Math.asin(direction.y);
-
-    gsap.to(globe.rotation, 1, {
-        y: -angleOffsetHorizontal,
-        x: angleOffsetVertical
-    });
+    entry = entry.split(", ")[1] ? entry.split(", ")[0] : entry
 
     if (!isEnlarged) {
         setupLoading();
@@ -639,15 +647,28 @@ async function onCitySearch(lat, lon) {
             removeMarkers();
         }
 
-        addMarker(worldCoordinates);
+        if ((lat && lon)) {
+            const worldCoordinates = convertLatLonToWorld(lat, lon);
+    
+            const direction = worldCoordinates.clone().sub(globe.position).normalize();
+            const angleOffsetHorizontal = Math.atan2(direction.x, direction.z);
+            const angleOffsetVertical = Math.asin(direction.y);
+    
+            gsap.to(globe.rotation, 1, {
+                y: -angleOffsetHorizontal,
+                x: angleOffsetVertical
+            });
+
+            addMarker(worldCoordinates);
+        }
 
         if (!isEnlarged) {
             try {
                 const data = await getWeatherDetails(lat, lon);
-                const convertedTemp = data.main.temp - 273.15;
 
                 document.getElementById('country-name').innerText = `${data.countryName || 'Not found'}`;
                 if (data.countryName) {
+                    const convertedTemp = data.main.temp - 273.15;
                     const flag = document.getElementById('flag');
                     flag.src = `https://flagsapi.com/${data.countryCode}/flat/64.png`;
                     flag.style.display = 'block';
@@ -655,7 +676,7 @@ async function onCitySearch(lat, lon) {
                     document.getElementById('details').style.display = 'block';
                     document.getElementById('text-display').innerText = data.name ? `You are currently viewing details with regards to ${data.name}` : `No city found within the given radius`;
                     if (data.name) {
-                        document.getElementById('city-container').dataset.city = data.name
+                        document.getElementById('city-container').dataset.city = `${entry}:${data.countryCode}`
                     }
                     document.getElementById('temperature').innerHTML = `<span class="label">TEMPERATURE:</span>&nbsp;<span id="value" class="value">${convertedTemp.toFixed(2)}</span>C`;
                     document.getElementById('weather').innerHTML = `<span class="label">WEATHER:</span>&nbsp;<span class="value">${data.weather[0].description}</span>`;
@@ -669,6 +690,21 @@ async function onCitySearch(lat, lon) {
                     document.getElementById('humidity').innerHTML = `<span class="label">HUMIDITY:</span>&nbsp;<span class="value">${data.main.humidity}</span>%`;
                     document.getElementById('pressure').innerHTML = `<span class="label">PRESSURE:</span>&nbsp;<span class="value">${data.main.pressure}</span> hPa`;
                     document.getElementById('escape').style.display = 'block';
+
+                    const cameraPositionZ = isEnlarged ? 5 : 3.5;
+                    const globePositionX = isEnlarged ? 0 : 0.5;
+
+                    gsap.to(camera.position, 0.75, {
+                        z: cameraPositionZ,
+                        onUpdate: updateAspect
+                    });
+                    gsap.to(globe.position, 0.75, {
+                        x: globePositionX
+                    });
+
+                    fadeHowToUseMenu(isEnlarged);
+                    toggleSearch(isEnlarged)
+                    toggleEscapePanel(isEnlarged);
                 } else {
                     document.getElementById('text-display').innerHTML = 'The location you clicked is not a valid country, or close enough to a nearby country. Try clicking elsewhere to locate country data.';
                     document.getElementById('details').style.display = 'none';
@@ -679,36 +715,23 @@ async function onCitySearch(lat, lon) {
             }
         }
 
-        const cameraPositionZ = isEnlarged ? 5 : 3.5;
-        const globePositionX = isEnlarged ? 0 : 0.5;
-
-        gsap.to(camera.position, 0.75, {
-            z: cameraPositionZ,
-            onUpdate: updateAspect
-        });
-        gsap.to(globe.position, 0.75, {
-            x: globePositionX
-        });
-
-
-
         toggleInfoBox(!isEnlarged);
-        fadeHowToUseMenu(isEnlarged);
-        toggleSearch(isEnlarged)
         isEnlarged = !isEnlarged;
-        toggleEscapePanel(isEnlarged);
     }
 }
 
 async function removeFavourite(username, city) {
     try {
+        city = city.split(", ").join(":")
+        let cityName = city.split(":")[0]
+
         const response = await fetch(`/remove_favourites?username=${username}&city_name=${city}`);
         const data = await response.json();
 
         if (data == true) {
             const container = document.getElementById(`div-${city.trim()}`)
             container.remove()
-            showPopup(`${city} has been successfully removed from your favourites`)
+            showPopup(`${cityName} has been successfully removed from your favourites`)
         } else {
             console.error("Error removing favourite");
         }
@@ -723,23 +746,25 @@ function gatherFavouritesInfo() {
     const username = usernameContainer.dataset.username;
 
     if (city.trim() !== '') {
-        addToFavorites(username, city);
+        addToFavourites(username, city);
     } else {
         alert('Please enter a city name before adding to favorites.');
     }
 }
 
-async function addToFavorites(username, city) {
+async function addToFavourites(username, city) {
     const url = `/add_to_favourites?username=${username}&city_name=${city}`;
+
+    let cityName = city.split(":")[0]
 
     try {
         const response = await fetch(url, { method: 'POST' });
         const data = await response.json();
 
         if (data.success) {
-            showPopup(`${city} has been successfully added to your favourites`)
+            showPopup(`${cityName} has been successfully added to your favourites`)
         } else {
-            alert(`Failed to add ${city} to favorites. Please try again.`);
+            alert(`Failed to add ${cityName} to favorites. Please try again.`);
         }
     } catch (error) {
         console.error('Error adding to favorites:', error);
@@ -799,6 +824,17 @@ function setupFavourites() {
     if (favouritesButton) {
         favouritesButton.addEventListener("click", async function() {
             try {
+                const fadeDuration = 0.5;
+
+                favouritesTab.style.opacity = '0';
+                favouritesTab.style.left = '-100%';
+
+                gsap.to(favouritesTab, fadeDuration, {
+                    opacity: 1,
+                    left: '0',
+                    ease: 'power2.out',
+                });
+
                 favouritesTab.classList.toggle("active");
 
                 const response = await fetch(`/get_user_favourites?username=${username}`);
@@ -806,7 +842,10 @@ function setupFavourites() {
 
                 favouritesList.innerHTML = "";
 
-                let cityArray = data[0].split(",")
+                let cityArray;
+                if (data[0]) {
+                    cityArray = data[0].split(",")
+                }
 
                 const cityContainer = document.createElement("div");
                 const buttonContainer = document.createElement("div");
@@ -814,6 +853,8 @@ function setupFavourites() {
 
                 if (cityArray && cityArray.length > 0) {
                     cityArray.forEach(function(city) {
+                        if (city == "") return;
+
                         const listItem = document.createElement("li");
                         const btnDiv = document.createElement("div")
                         const searchButton = document.createElement("button")
@@ -827,7 +868,12 @@ function setupFavourites() {
                         removeButton.className = "favBtn remove";
                         removeButton.textContent = "Remove"
 
-                        listItem.textContent = city;
+                        city = city.split(":").join(", ")
+                        let cityName = city.split(", ")[0]
+                        
+                        const truncatedCity = cityName.length > 13 ? cityName.substring(0, 13) + "..." : cityName;
+
+                        listItem.textContent = truncatedCity;
                         cityContainer.appendChild(listItem)
                         buttonContainer.appendChild(searchButton)
                         buttonContainer.appendChild(removeButton)
@@ -843,7 +889,7 @@ function setupFavourites() {
                         searchButton.addEventListener("click", function() {
                             performCitySearch(city)
                                 .then(data => {
-                                    onCitySearch(data.latitude, data.longitude)
+                                    onCitySearch(cityName, data.latitude, data.longitude)
                                     favouritesTab.classList.toggle("active");
                                 })
                         });

@@ -2,7 +2,6 @@ from flask import Flask, jsonify, render_template, request, flash, redirect, url
 import httpx
 from wtforms import Form, StringField, PasswordField, validators
 import asyncpg
-import asyncio
 
 app = Flask(__name__)
 app.secret_key = b'#7a*9Xb$z1'
@@ -24,6 +23,12 @@ async def close_pool(pool):
 class LoginForm(Form):
     username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])
+
+class SignupForm(Form):
+    username = StringField('Username', [validators.DataRequired()])
+    password = PasswordField('Password', [validators.DataRequired()])
+    email = StringField('Email', [validators.DataRequired(), validators.Email()])
+    phone_number = StringField('Phone Number (optional)', [validators.Optional()])
 
 @app.route('/login', methods=['GET', 'POST'])
 async def login():
@@ -52,6 +57,38 @@ async def login():
 
     return render_template('login.html', form=form, error_message=error_message)
 
+@app.route('/signup', methods=["GET", "POST"])
+async def signup():
+    form = SignupForm(request.form)
+    error_message = None
+
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        password = form.password.data
+        email = form.email.data
+        phone_number = form.phone_number.data
+
+        pool = await create_pool()
+        db = await pool.acquire()
+
+        try:
+            existing_user = await db.fetchrow("SELECT * FROM users WHERE username = $1 OR email = $2", username, email)
+
+            if existing_user:
+                error_message = 'Username or email is already taken'
+            else:
+                await db.execute("INSERT INTO users (username, password, email, phone_number) VALUES ($1, $2, $3, $4)",
+                                 username, password, email, phone_number)
+
+                session['logged_in'] = True
+                session['username'] = username
+                return render_template('index.html', username=username)
+        finally:
+            await pool.release(db)
+            await close_pool(pool)
+
+    return render_template('signup.html', form=form, error_message=error_message)
+
 @app.route('/about')
 async def about():
     return render_template('about.html')
@@ -65,20 +102,28 @@ def logout():
     session.clear()
     return redirect(url_for('dashboard')) 
 
+@app.route('/')
+async def index():
+    return redirect(url_for('dashboard'))
+
 @app.route('/dashboard')
 async def dashboard():
+    error_message = None;
+
     if not session.get('logged_in'):
-        flash('Please log in first.', 'danger')
-        return redirect(url_for('login'))
+        error_message = "You are not logged in"
+        return render_template('login.html', error_message=error_message)
+
+    username = session.get('username')
+
+    if not username:
+        error_message = "You are not logged in"
+        return render_template('login.html', error_message=error_message)
     
-    return render_template("index.html")
+    return render_template('index.html', username=username)
 
 @app.route('/get_weather', methods=["GET", "POST"])
 async def get_weather():
-    if not session.get('logged_in'):
-        flash('Please log in first.', 'danger')
-        return redirect(url_for('login'))
-
     lat = request.args.get('lat')
     lon = request.args.get('lon')
 
@@ -97,10 +142,6 @@ async def get_weather():
     
 @app.route('/search_city', methods=['GET'])
 async def search_city():
-    if not session.get('logged_in'):
-        flash('Please log in first.', 'danger')
-        return redirect(url_for('login'))
-    
     city = request.args.get('city_name')
 
     if not city:
@@ -204,12 +245,9 @@ async def add_to_favourites(username, city_name):
         city_name = city_name.strip()
 
         user_exists = await db.fetchval(
-            "SELECT username FROM users WHERE username = $1",
+            "SELECT username FROM favourites WHERE username = $1",
             username,
         )
-
-        if not user_exists:
-            raise ValueError(f"User with username {username} does not exist")
 
         existing_favourites = await db.fetchval(
             "SELECT city_name FROM favourites WHERE username = $1",
@@ -224,19 +262,20 @@ async def add_to_favourites(username, city_name):
             )
             return True
 
-        current_favourites = existing_favourites.split(", ")
+        if user_exists:
+            current_favourites = existing_favourites.split(", ")
 
-        if city_name in current_favourites:
-            raise ValueError(f"{city_name} is already in your favorites")
+            if city_name in current_favourites:
+                raise ValueError(f"{city_name} is already in your favorites")
 
-        current_favourites.append(city_name)
+            current_favourites.append(city_name)
 
-        updated_favourites = ", ".join(current_favourites)
-        await db.execute(
-            "UPDATE favourites SET city_name = $1 WHERE username = $2",
-            updated_favourites,
-            username,
-        )
+            updated_favourites = ", ".join(current_favourites)
+            await db.execute(
+                "UPDATE favourites SET city_name = $1 WHERE username = $2",
+                updated_favourites,
+                username,
+            )
 
         return True
 
