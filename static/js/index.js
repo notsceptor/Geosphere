@@ -481,7 +481,7 @@ function convertWorldToLatLon(worldPosition) {
 
 function convertLatLonToWorld(latDeg, lonDeg) {
     const radius = 0.5; 
-    const latCorrectionFactor = 1; 
+    const latCorrectionFactor = 0; 
     const lonCorrectionFactor = -1; 
     const reLatCorrectionFactor = 0.03;
 
