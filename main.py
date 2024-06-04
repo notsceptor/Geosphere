@@ -1,24 +1,15 @@
 from flask import Flask, jsonify, render_template, request, flash, redirect, url_for, session
 import httpx
 from wtforms import Form, StringField, PasswordField, validators
-import asyncpg
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = b'#7a*9Xb$z1'
 
-DATABASE_CONFIG = {
-    'host': "db.dyvqjatgbyfwpbulbcej.supabase.co",
-    'port': 5432,
-    'database': "postgres",
-    'user': "postgres",
-    'password': "uGe0g7TX55W14zXb"
-}
-
-async def create_pool():
-    return await asyncpg.create_pool(**DATABASE_CONFIG)
-
-async def close_pool(pool):
-    await pool.close()
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 class LoginForm(Form):
     username = StringField('Username', [validators.DataRequired()])
@@ -39,21 +30,18 @@ async def login():
         username = form.username.data
         password = form.password.data
 
-        pool = await create_pool()
-        db = await pool.acquire()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        result = cur.fetchone()
+        conn.close()
 
-        try:
-            result = await db.fetchrow("SELECT * FROM users WHERE username = $1 AND password = $2", username, password)
-
-            if result:
-                session['logged_in'] = True
-                session['username'] = username
-                return render_template('index.html', username=username)
-            else:
-                error_message = 'Your details are incorrect'
-        finally:
-            await pool.release(db)
-            await close_pool(pool)
+        if result:
+            session['logged_in'] = True
+            session['username'] = username
+            return render_template('index.html', username=username)
+        else:
+            error_message = 'Your details are incorrect'
 
     return render_template('login.html', form=form, error_message=error_message)
 
@@ -68,24 +56,22 @@ async def signup():
         email = form.email.data
         phone_number = form.phone_number.data
 
-        pool = await create_pool()
-        db = await pool.acquire()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, email))
+        existing_user = cur.fetchone()
 
-        try:
-            existing_user = await db.fetchrow("SELECT * FROM users WHERE username = $1 OR email = $2", username, email)
+        if existing_user:
+            error_message = 'Username or email is already taken'
+        else:
+            cur.execute("INSERT INTO users (username, password, email, phone_number) VALUES (?, ?, ?, ?)",
+                        (username, password, email, phone_number))
+            conn.commit()
+            conn.close()
 
-            if existing_user:
-                error_message = 'Username or email is already taken'
-            else:
-                await db.execute("INSERT INTO users (username, password, email, phone_number) VALUES ($1, $2, $3, $4)",
-                                 username, password, email, phone_number)
-
-                session['logged_in'] = True
-                session['username'] = username
-                return render_template('index.html', username=username)
-        finally:
-            await pool.release(db)
-            await close_pool(pool)
+            session['logged_in'] = True
+            session['username'] = username
+            return render_template('index.html', username=username)
 
     return render_template('signup.html', form=form, error_message=error_message)
 
@@ -191,35 +177,33 @@ async def remove_favourites_route():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-async def get_user_favourites(username):
+def get_user_favourites(username):
     try:
-        pool = await create_pool()
-        db = await pool.acquire()
-
-        result = await db.fetch("SELECT city_name FROM favourites WHERE username = $1", username)
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT city_name FROM favourites WHERE username = ?", (username,))
+        result = cur.fetchall()
         return [row['city_name'] for row in result]
     except Exception as e:
         print(str(e))
     finally:
-        await pool.release(db)
-        await close_pool(pool)
+        conn.close()
 
-async def remove_favourites(username, city_name):
+
+def remove_favourites(username, city_name):
     try:
-        pool = await create_pool()
-        db = await pool.acquire()
+        conn = get_db_connection()
+        cur = conn.cursor()
 
         city_name = city_name.strip()
 
-        existing_favourites = await db.fetchval(
-            "SELECT city_name FROM favourites WHERE username = $1",
-            username,
-        )
+        cur.execute("SELECT city_name FROM favourites WHERE username = ?", (username,))
+        existing_favourites = cur.fetchone()
 
         if not existing_favourites:
             raise ValueError("No favorites found for the user")
 
-        current_favourites = existing_favourites.split(", ")
+        current_favourites = existing_favourites['city_name'].split(", ")
 
         if city_name not in current_favourites:
             raise ValueError(f"{city_name} is not in your favorites")
@@ -227,43 +211,36 @@ async def remove_favourites(username, city_name):
         current_favourites.remove(city_name)
 
         updated_favourites = ", ".join(current_favourites)
-        await db.execute("UPDATE favourites SET city_name = $1 WHERE username = $2", updated_favourites, username)
+        cur.execute("UPDATE favourites SET city_name = ? WHERE username = ?", (updated_favourites, username))
+        conn.commit()
 
         return True
 
     except Exception as e:
         print(str(e))
     finally:
-        await pool.release(db)
-        await close_pool(pool)
+        conn.close()
 
-async def add_to_favourites(username, city_name):
+def add_to_favourites(username, city_name):
     try:
-        pool = await create_pool()
-        db = await pool.acquire()
+        conn = get_db_connection()
+        cur = conn.cursor()
 
         city_name = city_name.strip()
 
-        user_exists = await db.fetchval(
-            "SELECT username FROM favourites WHERE username = $1",
-            username,
-        )
+        cur.execute("SELECT username FROM favourites WHERE username = ?", (username,))
+        user_exists = cur.fetchone()
 
-        existing_favourites = await db.fetchval(
-            "SELECT city_name FROM favourites WHERE username = $1",
-            username,
-        )
+        cur.execute("SELECT city_name FROM favourites WHERE username = ?", (username,))
+        existing_favourites = cur.fetchone()
 
         if not user_exists:
-            await db.execute(
-                "INSERT INTO favourites (username, city_name) VALUES ($1, $2)",
-                username,
-                city_name,
-            )
+            cur.execute("INSERT INTO favourites (username, city_name) VALUES (?, ?)", (username, city_name))
+            conn.commit()
             return True
 
         if user_exists:
-            current_favourites = existing_favourites.split(", ")
+            current_favourites = existing_favourites['city_name'].split(", ") if existing_favourites else []
 
             if city_name in current_favourites:
                 raise ValueError(f"{city_name} is already in your favorites")
@@ -271,21 +248,36 @@ async def add_to_favourites(username, city_name):
             current_favourites.append(city_name)
 
             updated_favourites = ", ".join(current_favourites)
-            await db.execute(
-                "UPDATE favourites SET city_name = $1 WHERE username = $2",
-                updated_favourites,
-                username,
-            )
+            cur.execute("UPDATE favourites SET city_name = ? WHERE username = ?", (updated_favourites, username))
+            conn.commit()
 
         return True
 
     except Exception as e:
         print(str(e))
     finally:
-        await pool.release(db)
-        await close_pool(pool)
+        conn.close()
 
-
+def create_tables():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone_number TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS favourites (
+            username TEXT NOT NULL,
+            city_name TEXT NOT NULL,
+            PRIMARY KEY (username, city_name)
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 async def get_weather_details(lat, lon):
     weather_api_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=bef596d12f785aff7d562a0506c5b998'
@@ -316,3 +308,4 @@ async def perform_city_search(city):
 
 if __name__ == '__main__':
     app.run(debug=True)
+    create_tables()
