@@ -17,7 +17,8 @@ Open a command prompt (CMD) in the Geosphere folder (the one you downloaded and 
 pip install flask
 pip install httpx
 pip install wtforms
-pip install asyncpg
+pip install sqlite3
+pip install email-validator
 ```
 
 Replace "flask" with each of the module names listed above, and make sure to run these commands within the Geosphere folder.
