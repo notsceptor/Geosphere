@@ -14,7 +14,7 @@ Make sure you have the following installed on your system:
 Open a command prompt (CMD) in the Geosphere folder (the one you downloaded and extracted) and install the required Python modules using the following commands:
 
 ```bash
-pip install flask
+pip install flask[async]
 pip install httpx
 pip install wtforms
 pip install sqlite3
